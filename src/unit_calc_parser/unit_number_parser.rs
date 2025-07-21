@@ -1,92 +1,125 @@
-#[derive(Clone)]
-pub struct UnitNumber{
-    pub num:f64,
-    pub units:Vec<UnitExp>,
+#[derive(Clone, PartialEq)]
+pub struct UnitNumber {
+    pub num: f64,
+    pub units: Vec<UnitExp>,
 }
-impl ToString for UnitNumber{
+impl ToString for UnitNumber {
     fn to_string(&self) -> String {
-        format!("{} {}", self.num, self.units.iter().map(|u| u.to_string()).collect::<Vec<String>>().join(""))
+        let upos = self
+            .units
+            .clone()
+            .iter()
+            .filter(|a| a.exp > 0)
+            .map(|a| unit_exp_to_superscript_exp(a))
+            .collect::<Vec<String>>()
+            .join("");
+        let udiv = self
+            .units
+            .clone()
+            .iter()
+            .filter(|a| a.exp < 0)
+            .map(|a| {
+                unit_exp_to_superscript_exp(&UnitExp {
+                    exp: -a.exp,
+                    unit: a.unit.clone(),
+                })
+            })
+            .collect::<Vec<String>>()
+            .join("");
+        if self.num==1.0{
+            if upos.len() == 0 {
+                if udiv.len() == 0 {
+                    format!("")
+                } else {
+                    format!("1/{udiv}")
+                }
+            } else {
+                if udiv.len() == 0 {
+                    format!("{upos}")
+                } else {
+                    format!("{upos}/{udiv}")
+                }
+            }
+        }else{
+            if upos.len() == 0 {
+                if udiv.len() == 0 {
+                    format!("{}",self.num)
+                } else {
+                    format!("{} 1/{udiv}",self.num)
+                }
+            } else {
+                if udiv.len() == 0 {
+                    format!("{} {upos}",self.num)
+                } else {
+                    format!("{} {upos}/{udiv}",self.num)
+                }
+            }
+        }
     }
 }
-#[derive(Clone)]
-pub struct UnitExp{
-    pub exp:i64,
-    pub unit:MetricBaseUnit,
+pub fn unit_exp_to_superscript_exp(input: &UnitExp) -> String {
+    format!(
+        "{}{}",
+        input.unit.to_string(),
+        if input.exp == 1 {
+            String::new()
+        } else {
+            superscript(input.exp.to_string())
+        }
+    )
 }
-impl ToString for UnitExp{
+pub fn superscript(input: String) -> String {
+    input
+        .chars()
+        .map(|c| match c {
+            '0' => '⁰',
+            '1' => '¹',
+            '2' => '²',
+            '3' => '³',
+            '4' => '⁴',
+            '5' => '⁵',
+            '6' => '⁶',
+            '7' => '⁷',
+            '8' => '⁸',
+            '9' => '⁹',
+            '-' => '⁻',
+            _ => panic!(),
+        })
+        .collect::<String>()
+}
+#[derive(Clone, PartialEq)]
+pub struct UnitExp {
+    pub exp: i64,
+    pub unit: MetricBaseUnit,
+}
+impl ToString for UnitExp {
     fn to_string(&self) -> String {
-        format!("{}^{}", self.unit.to_string(),self.exp)
+        format!("{}^{}", self.unit.to_string(), self.exp)
     }
 }
-#[derive(Clone)]
-pub enum MetricBaseUnit{
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub enum MetricBaseUnit {
     Meter,
     Gramm,
     Second,
     Ampere,
-    Volt,
     Kelvin,
     Mole,
     Candela,
     Byte,
 }
-impl ToString for MetricBaseUnit{
+impl ToString for MetricBaseUnit {
     fn to_string(&self) -> String {
         match self {
-            MetricBaseUnit::Meter=>"m",
-            MetricBaseUnit::Gramm=>"g",
-            MetricBaseUnit::Second=>"s",
-            MetricBaseUnit::Ampere=>"A",
-            MetricBaseUnit::Volt=>"V",
-            MetricBaseUnit::Kelvin=>"°K",
-            MetricBaseUnit::Mole=>"mol",
-            MetricBaseUnit::Candela=>"cd",
-            MetricBaseUnit::Byte=>"B",
-        }.to_string()
-    }
-}
-pub fn parse_unit_number(input:String)->Result<UnitNumber,String>{
-    let all_digits="0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let mut last_num_id=0;
-    for (i,c) in input.chars().enumerate(){
-        if "0123456789".contains(c){
-            last_num_id=i;
+            MetricBaseUnit::Meter => "m",
+            MetricBaseUnit::Gramm => "g",
+            MetricBaseUnit::Second => "s",
+            MetricBaseUnit::Ampere => "A",
+            MetricBaseUnit::Kelvin => "°K",
+            MetricBaseUnit::Mole => "mol",
+            MetricBaseUnit::Candela => "cd",
+            MetricBaseUnit::Byte => "B",
         }
+        .to_string()
     }
-    let mut num:String=input[0..last_num_id+1].to_string();
-    let units:String=input[last_num_id+1..].to_string();
-    let mut base:u64=match &num[0..2]{
-        "0x"=>16,
-        "0b"=>2,
-        "0o"=>8,
-        _=>10,
-    };
-    if base!=10{
-        num=num[2..].to_string();
-    }
-    if num.contains("z")&&base==10{
-        let id = num.find("z").unwrap();
-        let base_str=num[0..id].to_string();
-        num=num[id+1..].to_string();
-        base=base_str.parse().map_err(|e| format!("{:?}",e))?;
-    }
-    let mut exp: i64=0;
-    if num.contains("e"){
-        let id = num.find("e").unwrap();
-        let exp_str=num[id+1..].to_string();
-        num=num[0..id].to_string();
-        exp=exp_str.parse().map_err(|e| format!("{:?}",e))?;
-    }
-    let dot_id=num.find(".").or(Some(num.len())).unwrap() as i64+exp;
-    let mut i=0;
-    let digits=all_digits[0..(base as usize)].to_string();
-    let mut number:f64=0.0;
-    for c in num.chars(){
-        if digits.contains(c){
-            number+=(digits.find(c).unwrap()*base.pow((dot_id-i) as u32) as usize) as f64;
-            i+=1;
-        }
-    }
-
-    Err("TODO!".to_string())
 }

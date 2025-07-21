@@ -1,8 +1,8 @@
-use std::vec;
+use std::{f64, vec};
 
 use crate::unit_calc_parser::unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Token {
     Number(String),
     StringLiteral(String),
@@ -19,14 +19,15 @@ pub enum Token {
     NEq,
     OpenBracket,
     CloseBracket,
-    In,
-    Unit(UnitNumber),
+    Convert,
+    Dot,
+    Unit(UnitNumber, Option<Unit>),
 }
 impl ToString for Token {
     fn to_string(&self) -> String {
         match self {
             Token::Number(s) => format!("{s}").to_string(),
-            Token::Unit(s) => s.to_string(),
+            Token::Unit(s, _) => s.to_string(),
             Token::StringLiteral(s) => format!("\"{s}\""),
             Token::Plus => "+".to_string(),
             Token::Minus => "-".to_string(),
@@ -41,112 +42,20 @@ impl ToString for Token {
             Token::NEq => "!=".to_string(),
             Token::OpenBracket => "(".to_string(),
             Token::CloseBracket => ")".to_string(),
-            Token::In => "in".to_string(),
+            Token::Convert => "in".to_string(),
+            Token::Dot => ".".to_string(),
         }
     }
 }
-pub fn lex(input: String) -> Result<Vec<Token>, String> {
-    let mut tokens = Vec::new();
-    let operator_chars = "<>!=/*-+^";
-    let number_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ°._";
-    let mut cur_kind = 0;
-    let mut first_id = 0;
-    /*
-    0: nothing,
-    1: operator,
-    2: number,
-    3: string literal,
-    */
-    for (i, c) in format!("{input} ").chars().enumerate() {
-        match cur_kind {
-            0 => {}
-            1 => {
-                if !operator_chars.contains(c) {
-                    cur_kind = 0;
-                    let word = input[first_id..i].to_string();
-                    match word.as_str() {
-                        "+" => {
-                            tokens.push(Token::Plus);
-                        }
-                        "-" => {
-                            tokens.push(Token::Minus);
-                        }
-                        "*" => {
-                            tokens.push(Token::Mult);
-                        }
-                        "/" => {
-                            tokens.push(Token::Div);
-                        }
-                        "^" => {
-                            tokens.push(Token::Power);
-                        }
-                        "<=" => {
-                            tokens.push(Token::LowerEq);
-                        }
-                        "<" => {
-                            tokens.push(Token::Lower);
-                        }
-                        ">=" => {
-                            tokens.push(Token::HigherEq);
-                        }
-                        ">" => {
-                            tokens.push(Token::Higher);
-                        }
-                        "==" => {
-                            tokens.push(Token::Eq);
-                        }
-                        "!=" => {
-                            tokens.push(Token::NEq);
-                        }
-                        "(" => {
-                            tokens.push(Token::OpenBracket);
-                        }
-                        ")" => {
-                            tokens.push(Token::CloseBracket);
-                        }
-                        _ => {
-                            return Err(format!("unrecognized token: {word}"));
-                        }
-                    }
-                }
-            }
-            2 => {
-                if !number_chars.contains(c) {
-                    cur_kind = 0;
-                    let _word = input[first_id..i].to_string();
-                }
-            }
-            3 => {
-                if c == '"' {
-                    let word = input[first_id + 1..i].to_string();
-                    tokens.push(Token::StringLiteral(word));
-                    cur_kind = 0;
-                    continue;
-                }
-            }
-            _ => todo!(),
-        }
-        if cur_kind == 0 {
-            if operator_chars.contains(c) {
-                cur_kind = 1;
-            } else if number_chars.contains(c) {
-                cur_kind = 2;
-            } else if c == '"' {
-                cur_kind = 3;
-            }
-            first_id = i;
-        }
-    }
-    Ok(tokens)
-}
-pub fn lex2(input: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
+pub fn lex(input: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
+    let chars=input.chars().collect::<Vec<char>>();
     let mut start_id = 0;
     let mut output = Vec::new();
-    while start_id < input.len() {
-        let mut end_id = input.len();
+    while start_id < chars.len() {
+        let mut end_id = chars.len();
         let mut sucess = false;
         while end_id > start_id {
-            let token = get_token(input[start_id..end_id].to_string(), units);
+            let token = get_token(chars[start_id..end_id].iter().collect::<String>(), units);
             if let Some(t) = token {
                 output.extend(t);
                 start_id = end_id;
@@ -176,6 +85,13 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         ("!=", vec![Token::NEq]),
         ("(", vec![Token::OpenBracket]),
         (")", vec![Token::CloseBracket]),
+        ("as", vec![Token::Convert]),
+        ("=>", vec![Token::Convert]),
+        ("->", vec![Token::Convert]),
+        ("to", vec![Token::Convert]),
+        (".", vec![Token::Dot]),
+        ("²", vec![Token::Power,Token::Number("2".to_string())]),
+        ("³", vec![Token::Power,Token::Number("3".to_string())]),
     ];
     if let Some(t) = atomic.iter().find(|a| a.0 == s) {
         return Some(t.1.iter().cloned().collect());
@@ -195,7 +111,7 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
     for u in units {
         for n in u.valid_names.iter() {
             if *n == s {
-                return Some(vec![Token::Unit(u.si.clone())]);
+                return Some(vec![Token::Unit(u.si.clone(), Some(u.clone()))]);
             }
         }
     }
@@ -203,6 +119,38 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
 }
 pub fn get_units() -> Vec<Unit> {
     let mut v = vec![];
+    v.extend(
+        Unit {
+            name: "percent".to_string(),
+            plural: "percents".to_string(),
+            abbreviation: "%".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1.0e-2,
+                units: vec![],
+            },
+            priority: f32::NEG_INFINITY,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+    
+    v.extend(
+        Unit {
+            name: "π".to_string(),
+            plural: "π".to_string(),
+            abbreviation: "π".to_string(),
+            valid_names: vec!["pi".to_string(), "PI".to_string(), "Pi".to_string()],
+            si: UnitNumber {
+                num: f64::consts::PI,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
     v.extend(
         Unit {
             name: "meter".to_string(),
@@ -216,11 +164,12 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
     );
+
     v.extend(
         Unit {
             name: "gram".to_string(),
@@ -228,13 +177,13 @@ pub fn get_units() -> Vec<Unit> {
             abbreviation: "g".to_string(),
             valid_names: Vec::new(),
             si: UnitNumber {
-                num: 1.0, // because base SI unit is kilogram
+                num: 1.0,
                 units: vec![UnitExp {
                     unit: MetricBaseUnit::Gramm,
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
@@ -253,10 +202,137 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
+    );
+    
+    v.extend(
+        Unit {
+            name: "hertz".to_string(),
+            plural: "hertz".to_string(),
+            abbreviation: "Hz".to_string(),
+            valid_names: vec!["hz".to_string()],
+            si: UnitNumber {
+                num: 1.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: -1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.push(
+        Unit {
+            name: "minute".to_string(),
+            plural: "minutes".to_string(),
+            abbreviation: "min".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 60.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "hour".to_string(),
+            plural: "hours".to_string(),
+            abbreviation: "h".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 60.0 * 60.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "day".to_string(),
+            plural: "days".to_string(),
+            abbreviation: "d".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 60.0 * 60.0 * 24.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "week".to_string(),
+            plural: "weeks".to_string(),
+            abbreviation: "weeks".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 60.0 * 60.0 * 24.0 * 7.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "month".to_string(),
+            plural: "months".to_string(),
+            abbreviation: "mon".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 60.0 * 60.0 * 24.0 * 30.436875,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "year".to_string(),
+            plural: "years".to_string(),
+            abbreviation: "a".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 60.0 * 60.0 * 24.0 * 365.2425,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create(),
     );
 
     v.extend(
@@ -272,7 +348,131 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "volt".to_string(),
+            plural: "volts".to_string(),
+            abbreviation: "V".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -3,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Ampere,
+                        exp: -1,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "watt".to_string(),
+            plural: "watts".to_string(),
+            abbreviation: "W".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -3,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "joule".to_string(),
+            plural: "joules".to_string(),
+            abbreviation: "J".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "newton".to_string(),
+            plural: "newtons".to_string(),
+            abbreviation: "N".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
@@ -291,7 +491,7 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
@@ -310,7 +510,7 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
@@ -329,7 +529,7 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
@@ -340,7 +540,7 @@ pub fn get_units() -> Vec<Unit> {
             name: "liter".to_string(),
             plural: "liters".to_string(),
             abbreviation: "L".to_string(),
-            valid_names: vec!["l".to_string()], // lowercase alias
+            valid_names: vec!["l".to_string()],
             si: UnitNumber {
                 num: 0.001,
                 units: vec![UnitExp {
@@ -348,7 +548,7 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 3,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
@@ -367,7 +567,7 @@ pub fn get_units() -> Vec<Unit> {
                     exp: 1,
                 }],
             },
-            priority: 1.0,
+            priority: 0.0,
         }
         .create()
         .add_si_prefixes(),
@@ -392,9 +592,219 @@ pub fn get_units() -> Vec<Unit> {
         .add_si_prefixes(),
     );
 
+    // IMPERIAL
+
+    v.push(
+        Unit {
+            name: "inch".to_string(),
+            plural: "inches".to_string(),
+            abbreviation: "in".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 0.0254,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "foot".to_string(),
+            plural: "feet".to_string(),
+            abbreviation: "ft".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 0.3048,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "yard".to_string(),
+            plural: "yards".to_string(),
+            abbreviation: "yd".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 0.9144,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "mile".to_string(),
+            plural: "miles".to_string(),
+            abbreviation: "mi".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1609.344,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "ounce".to_string(),
+            plural: "ounces".to_string(),
+            abbreviation: "oz".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 28.349523125,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Gramm,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "pound".to_string(),
+            plural: "pounds".to_string(),
+            abbreviation: "lb".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 453.59237,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Gramm,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "gallon".to_string(),
+            plural: "gallons".to_string(),
+            abbreviation: "gal".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 0.003785411784,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 3,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "pint".to_string(),
+            plural: "pints".to_string(),
+            abbreviation: "pt".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 0.000473176473,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 3,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "square foot".to_string(),
+            plural: "square feet".to_string(),
+            abbreviation: "sqft".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 0.09290304,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 2,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "acre".to_string(),
+            plural: "acres".to_string(),
+            abbreviation: "ac".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 4046.8564224,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 2,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "pound-force".to_string(),
+            plural: "pound-force".to_string(),
+            abbreviation: "lbf".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 4448.2216152605,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
     v
 }
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Unit {
     pub name: String,
     pub plural: String,
@@ -420,7 +830,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("y{}", n),
+                        ..4 => format!("y{}", n),
                         _ => format!("yocto{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -438,7 +848,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("z{}", n),
+                        ..4 => format!("z{}", n),
                         _ => format!("zepto{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -456,7 +866,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("a{}", n),
+                        ..4 => format!("a{}", n),
                         _ => format!("atto{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -474,7 +884,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("f{}", n),
+                        ..4 => format!("f{}", n),
                         _ => format!("fempto{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -492,7 +902,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("p{}", n),
+                        ..4 => format!("p{}", n),
                         _ => format!("pico{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -510,7 +920,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("n{}", n),
+                        ..4 => format!("n{}", n),
                         _ => format!("nano{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -524,7 +934,11 @@ impl Unit {
                 name: format!("micro{}", &self.name),
                 plural: format!("micro{}", &self.plural),
                 abbreviation: format!("µ{}", &self.abbreviation),
-                valid_names: vec![format!("mu{}", &self.abbreviation)],
+                valid_names: vec![
+                    format!("mu{}", &self.abbreviation),
+                    format!("micro{}", &self.plural),
+                    format!("micro{}", &self.name),
+                ],
                 si: UnitNumber {
                     num: self.si.num * 1e-6,
                     units: self.si.units.clone(),
@@ -539,12 +953,48 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("m{}", n),
+                        ..4 => format!("m{}", n),
                         _ => format!("milli{}", n),
                     })
                     .collect::<Vec<String>>(),
                 si: UnitNumber {
                     num: self.si.num * 1e-3,
+                    units: self.si.units.clone(),
+                },
+                priority: self.priority,
+            },
+            Unit {
+                name: format!("centi{}", &self.name),
+                plural: format!("centi{}", &self.plural),
+                abbreviation: format!("c{}", &self.abbreviation),
+                valid_names: self
+                    .valid_names
+                    .iter()
+                    .map(|n| match n.len() {
+                        ..4 => format!("c{}", n),
+                        _ => format!("centi{}", n),
+                    })
+                    .collect::<Vec<String>>(),
+                si: UnitNumber {
+                    num: self.si.num * 1e-2,
+                    units: self.si.units.clone(),
+                },
+                priority: self.priority,
+            },
+            Unit {
+                name: format!("deci{}", &self.name),
+                plural: format!("deci{}", &self.plural),
+                abbreviation: format!("d{}", &self.abbreviation),
+                valid_names: self
+                    .valid_names
+                    .iter()
+                    .map(|n| match n.len() {
+                        ..4 => format!("d{}", n),
+                        _ => format!("deci{}", n),
+                    })
+                    .collect::<Vec<String>>(),
+                si: UnitNumber {
+                    num: self.si.num * 1e-1,
                     units: self.si.units.clone(),
                 },
                 priority: self.priority,
@@ -557,7 +1007,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("{}", n),
+                        ..4 => format!("{}", n),
                         _ => format!("{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -575,7 +1025,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("k{}", n),
+                        ..4 => format!("k{}", n),
                         _ => format!("kilo{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -593,7 +1043,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("M{}", n),
+                        ..4 => format!("M{}", n),
                         _ => format!("mega{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -611,7 +1061,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("G{}", n),
+                        ..4 => format!("G{}", n),
                         _ => format!("giga{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -629,7 +1079,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("T{}", n),
+                        ..4 => format!("T{}", n),
                         _ => format!("tera{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -647,7 +1097,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("P{}", n),
+                        ..4 => format!("P{}", n),
                         _ => format!("peta{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -665,7 +1115,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("E{}", n),
+                        ..4 => format!("E{}", n),
                         _ => format!("exa{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -683,7 +1133,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("Z{}", n),
+                        ..4 => format!("Z{}", n),
                         _ => format!("zetta{}", n),
                     })
                     .collect::<Vec<String>>(),
@@ -701,7 +1151,7 @@ impl Unit {
                     .valid_names
                     .iter()
                     .map(|n| match n.len() {
-                        ..2 => format!("Y{}", n),
+                        ..4 => format!("Y{}", n),
                         _ => format!("yotta{}", n),
                     })
                     .collect::<Vec<String>>(),

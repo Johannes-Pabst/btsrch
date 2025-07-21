@@ -61,10 +61,9 @@ impl QueryParser for CustomCommandsParser {
         for s in self.scripts.iter() {
             let priority;
             if s.name.to_lowercase().starts_with(&query.to_lowercase()) {
-                priority = query.len() as f32 / (self.scripts.len() as f32).log(26.0);
+                priority = /* prob = (1/26)^priority */(query.len() as f32) - (self.scripts.len() as f32).log(26.0);
             } else if s.name.contains(&query) {
-                priority = query.len() as f32 / (self.scripts.len() as f32).log(26.0)
-                    * (s.name.len() - query.len()) as f32;
+                priority = (query.len() as f32) - (self.scripts.len() as f32).log(26.0) - ((s.name.len() - query.len()) as f32).log(26.0);
             } else {
                 continue;
             }

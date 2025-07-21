@@ -476,6 +476,7 @@ dependencies = [
 name = "btsrch"
 version = "0.1.0"
 dependencies = [
+ "arboard",
  "async-trait",
  "eframe",
  "egui",

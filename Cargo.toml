@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+arboard = "3.6.0"
 async-trait = "0.1.88"
 eframe = "0.32.0"
 egui = "0.32.0"

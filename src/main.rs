@@ -6,6 +6,7 @@ pub mod path_parser;
 pub mod link_parser;
 pub mod custom_commands_parser;
 pub mod unit_calc_parser;
+pub mod app_parser;
 
 use eframe::egui;
 use egui::{Align, CentralPanel, FontId, Key, Layout};
@@ -13,6 +14,7 @@ use egui::{Frame, TextEdit};
 use single_instance::SingleInstance;
 use tokio::sync::mpsc;
 
+use crate::app_parser::AppParser;
 use crate::custom_commands_parser::CustomCommandsParser;
 use crate::link_parser::LinkParser;
 use crate::path_parser::PathParser;
@@ -165,6 +167,7 @@ async fn main() {
     mgr.add_query_parser::<LinkParser>();
     mgr.add_query_parser::<PathParser>();
     mgr.add_query_parser::<UnitCalcParser>();
+    mgr.add_query_parser::<AppParser>();
     mgr.start();
     eframe::run_native("BTSRCH", options, Box::new(|_cc| Ok(Box::new(app)))).unwrap();
 }
