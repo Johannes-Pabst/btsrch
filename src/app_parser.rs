@@ -1,14 +1,19 @@
-use std::sync::Arc;
+use std::{process::Command, sync::Arc};
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 use async_trait::async_trait;
+use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::query_manager::{ListEntry, QueryParser};
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct AppInfo {
     pub name: String,
-    pub path: String,
+    pub app_i_d: String,
 }
 #[derive(Clone)]
 pub struct AppParser {
@@ -16,37 +21,94 @@ pub struct AppParser {
 }
 impl Default for AppParser {
     fn default() -> Self {
-        let app_list=Arc::new(RwLock::new(Vec::new()));
-        let app_list_clone=app_list.clone();
+        let app_list = Arc::new(RwLock::new(Vec::new()));
+        let app_list_clone = app_list.clone();
+        let t = tokio::task::spawn_blocking(|| async move {
+            #[cfg(target_os = "windows")]
+            {
+                use std::process::Stdio;
+                let output = Command::new("powershell")
+                    .arg("-Command")
+                    .arg("Get-StartApps | ConvertTo-Json")
+                    .stdout(Stdio::piped())
+                    .creation_flags(0x08000000)
+                    .output()
+                    .unwrap();
+                let json_str = String::from_utf8_lossy(&output.stdout);
+                let apps: Vec<AppInfo> = serde_json::from_str(&json_str).unwrap();
+                let mut app_list = app_list_clone.write().await;
+                *app_list = apps;
+            }
+            #[cfg(target_os = "linux")]
+            {
+                let app_dirs = [
+                    "/usr/share/applications",
+                    &format!(
+                        "{}/.local/share/applications",
+                        std::env::var("HOME").unwrap()
+                    ),
+                ];
+                let mut apps = Vec::new();
+                for dir in app_dirs {
+                    use std::path::Path;
+
+                    if Path::new(dir).exists() {
+                        use std::fs;
+
+                        if let Ok(entries) = fs::read_dir(dir) {
+                            for entry in entries.flatten() {
+                                let path = entry.path();
+                                if path.extension().map_or(false, |ext| ext == "desktop") {
+                                    use tokio::{fs::File, io::AsyncReadExt};
+
+                                    let name =
+                                        path.file_stem().unwrap().to_str().unwrap().to_string();
+                                    let mut content = String::new();
+                                    File::open(path)
+                                        .await
+                                        .unwrap()
+                                        .read_to_string(&mut content)
+                                        .await
+                                        .unwrap();
+                                    let ec = content[(content.find("\nExec=").unwrap() + 6)..]
+                                        .to_string();
+                                    let exec = ec[..(ec.find("\n").unwrap())].to_string();
+                                    apps.push(AppInfo {
+                                        name,
+                                        app_i_d: exec,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                let mut app_list = app_list_clone.write().await;
+                *app_list = apps;
+            }
+        });
         tokio::spawn(async move {
-            let mut app_list=crawl_folder(r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs".to_string());
-            let start_menu_path =  format!(r"\Microsoft\Windows\Start Menu\Programs{}",std::env::var("APPDATA").unwrap());
-            app_list.extend(crawl_folder(start_menu_path));
-            let mut apps = app_list_clone.write().await;
-            apps.extend(app_list);
+            t.await.unwrap().await;
         });
         Self { apps: app_list }
     }
 }
-pub fn crawl_folder(path:String)-> Vec<AppInfo> {
-    let mut apps = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(path) {
-        for entry in entries.flatten() {
-            apps.push(AppInfo { name: entry.path().file_stem().unwrap().to_str().unwrap().to_string(), path: entry.path().to_str().unwrap().to_string() });
-        }
-    }
-    apps
-}
 #[async_trait]
 impl QueryParser for AppParser {
     async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) {
-        let apps=self.apps.read().await;
+        let mut apps = self.apps.read().await;
+        while apps.len() == 0 {
+            drop(apps);
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            apps = self.apps.read().await;
+        }
         for s in apps.iter() {
             let priority;
             if s.name.to_lowercase().starts_with(&query.to_lowercase()) {
-                priority = /* prob = (1/26)^priority */(query.len() as f32) - (apps.len() as f32).log(26.0);
-            } else if s.name.contains(&query) {
-                priority = (query.len() as f32) - (apps.len() as f32).log(26.0) - ((s.name.len() - query.len()) as f32).log(26.0);
+                priority = /* prob = (1/26)^priority */(query.len() as f32) + (apps.len() as f32).log(1.0/26.0);
+            } else if s.name.to_lowercase().contains(&query.to_lowercase()) {
+                priority = (query.len() as f32)
+                    + (apps.len() as f32).log(1.0 / 26.0)
+                    + ((s.name.len() - query.len()) as f32).log(1.0 / 26.0);
             } else {
                 continue;
             }
@@ -58,7 +120,22 @@ impl QueryParser for AppParser {
                         ui.label(format!("{}", &s2.name));
                     }),
                     execute: Some(Box::new(move || {
-                        open::that_in_background(&s3.path).join().unwrap().unwrap();
+                        #[cfg(target_os = "windows")]
+                        {
+                            let app_id = format!("shell:AppsFolder\\{}", s3.app_i_d);
+                            Command::new("explorer").arg(app_id).spawn().unwrap();
+                        }
+                        #[cfg(target_os = "linux")]
+                        {
+                            let _ = Command::new("bash")
+                                .arg("-c")
+                                .arg(s3.app_i_d.clone())
+                                .stdin(std::process::Stdio::null())
+                                .stdout(std::process::Stdio::null())
+                                .stderr(std::process::Stdio::null())
+                                .spawn()
+                                .unwrap();
+                        }
                         std::process::exit(0);
                     })),
                     priority,

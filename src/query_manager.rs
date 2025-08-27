@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use tokio::sync::mpsc;
+use tokio::{sync::mpsc, task::JoinHandle};
 
 pub type LayoutFn = Box<dyn FnMut(&mut egui::Ui) + Send + Sync>;
 pub type ExecuteFn = Box<dyn FnMut() + Send + Sync>;
@@ -62,7 +62,7 @@ impl QueryManager {
     {
         self.parsers.push(Box::new(parser));
     }
-    pub fn start(self) {
+    pub fn start(self)-> JoinHandle<()> {
         let mut receiver = self.signal_receiver;
         tokio::spawn(async move {
             let sender = self.layout_sender;
@@ -97,6 +97,6 @@ impl QueryManager {
                     }
                 }));
             }
-        });
+        })
     }
 }
