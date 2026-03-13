@@ -27,6 +27,7 @@ impl QueryParser for LinkParser {
             "de",  // Germany
             "rs",  // docs.rs
             "tv",
+            "link",
         ];
         let word = r"([A-Za-z0-9_\-]+)";
         let bword = r"([A-Za-z0-9_\-%\.]+)";

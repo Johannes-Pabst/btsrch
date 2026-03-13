@@ -1,14 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-pub mod app_parser;
-pub mod custom_commands_parser;
-pub mod link_parser;
-pub mod path_parser;
 pub mod query_manager;
 pub mod search_helper;
-pub mod test_parser;
 pub mod unicode_parser;
-pub mod unit_calc_parser;
+pub mod parsers;
 
 use std::sync::Arc;
 
@@ -18,13 +13,13 @@ use egui::{Frame, TextEdit};
 use existing_instance::Endpoint;
 use tokio::sync::mpsc;
 
-use crate::app_parser::AppParser;
-use crate::custom_commands_parser::CustomCommandsParser;
-use crate::link_parser::LinkParser;
-use crate::path_parser::PathParser;
+use crate::parsers::app_parser::AppParser;
+use crate::parsers::custom_commands_parser::CustomCommandsParser;
+use crate::parsers::link_parser::LinkParser;
+use crate::parsers::path_parser::PathParser;
 use crate::query_manager::{ChangeInstruction, ListEntry, QueryManager};
 use crate::unicode_parser::UnicodeParser;
-use crate::unit_calc_parser::main::UnitCalcParser;
+use crate::parsers::unit_calc_parser::main::UnitCalcParser;
 
 struct SearchApp {
     query: String,

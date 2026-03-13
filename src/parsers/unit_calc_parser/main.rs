@@ -4,7 +4,7 @@ use tokio::sync::mpsc;
 
 use crate::{
     query_manager::{ListEntry, QueryParser},
-    unit_calc_parser::{
+    parsers::unit_calc_parser::{
         lexer::{get_units, lex},
         parser::{UnitCalculation, parse_unit_conversion},
         unit_number_parser::superscript,
