@@ -4,6 +4,7 @@ pub mod query_manager;
 pub mod search_helper;
 pub mod unicode_parser;
 pub mod parsers;
+pub mod config;
 
 use std::sync::Arc;
 
