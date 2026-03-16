@@ -24,11 +24,11 @@ pub struct UnitCalcParserConfig {
 }
 impl Default for UnitCalcParserConfig {
     fn default() -> Self {
-        Self { base_priority: 0.0, error_priority:0.0 }
+        Self { base_priority: 10.0, error_priority:-100.0 }
     }
 }
 impl ConfigDefault for UnitCalcParser {
-    fn create(config:&crate::config::Config)->Self {
+    fn create(config:&mut crate::config::Config)->Self {
         Self { config: config.get_namespace() }
     }
 }

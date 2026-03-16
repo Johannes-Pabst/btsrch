@@ -2,10 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use base64::Engine;
-use eframe::egui::{
-    ColorImage, Image, TextureHandle,
-    TextureOptions, Vec2,
-};
+use eframe::egui::{ColorImage, Image, TextureHandle, TextureOptions, Vec2};
 use image::ImageFormat;
 use serde::Deserialize;
 use tokio::{
@@ -14,7 +11,9 @@ use tokio::{
 };
 
 use crate::{
-    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{mark_text, search}
+    config::Config,
+    query_manager::{ConfigDefault, ListEntry, QueryParser},
+    search_helper::{SearchConfig, mark_text, search},
 };
 
 #[derive(Clone, Deserialize)]
@@ -51,6 +50,7 @@ fn decode_base64_image(data_uri: &str) -> Option<ColorImage> {
 pub struct UnicodeParser {
     unicode: Arc<RwLock<Vec<UnicodeChar>>>,
     config: UnicodeParserConfig,
+    search_config: SearchConfig,
 }
 #[derive(Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -59,11 +59,11 @@ pub struct UnicodeParserConfig {
 }
 impl Default for UnicodeParserConfig {
     fn default() -> Self {
-        Self { base_priority: 0.0 }
+        Self { base_priority: 20.0 }
     }
 }
 impl ConfigDefault for UnicodeParser {
-    fn create(config:&Config) -> Self {
+    fn create(config: &mut Config) -> Self {
         let unicode_list = Arc::new(RwLock::new(Vec::new()));
         let unicode_list_clone = unicode_list.clone();
         tokio::spawn(async move {
@@ -114,7 +114,8 @@ impl ConfigDefault for UnicodeParser {
         });
         Self {
             unicode: unicode_list,
-            config:config.get_namespace(),
+            config: config.get_namespace(),
+            search_config: config.get_namespace(),
         }
     }
 }
@@ -131,7 +132,7 @@ impl QueryParser for UnicodeParser {
             .iter()
             .map(|c| format!("{} {}", &c.key, &c.name))
             .collect::<Vec<_>>();
-        let mut found = search(&query, &texts);
+        let mut found = search(&query, &texts, &self.search_config);
         for (priority, id, mark) in found.drain(..) {
             let s = &characters[id];
             let s2 = s.clone();
@@ -172,7 +173,7 @@ impl QueryParser for UnicodeParser {
                             std::process::exit(0);
                         });
                     })),
-                    priority:priority+self.config.base_priority,
+                    priority: priority + self.config.base_priority,
                 })
                 .await
                 .ok()?;

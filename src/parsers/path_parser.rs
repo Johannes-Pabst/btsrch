@@ -17,11 +17,11 @@ pub struct PathParserConfig {
 }
 impl Default for PathParserConfig {
     fn default() -> Self {
-        Self { base_priority: 0.0 }
+        Self { base_priority: 100.0 }
     }
 }
 impl ConfigDefault for PathParser {
-    fn create(config:&crate::config::Config)->Self {
+    fn create(config:&mut crate::config::Config)->Self {
         Self { config: config.get_namespace() }
     }
 }

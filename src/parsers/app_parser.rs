@@ -1,4 +1,4 @@
-use std::{process::Command, sync::Arc, time::Instant};
+use std::{process::Command, sync::Arc};
 
 use serde::Deserialize;
 #[cfg(target_os = "windows")]
@@ -10,10 +10,9 @@ use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::{
-    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{mark_text, search}
+    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{SearchConfig, mark_text, search}
 };
 
-#[cfg(target_os = "linux")]
 /*
 damn, this looks complex.
 quotes: \", \`, \$, \\
@@ -29,6 +28,7 @@ field codes: %f, %F, %u, %U, %d, %D, %n, %N, (%i, %c, %k)(these should probably 
 no field codes in quotes! (:
 %F, %U, %i only valid as their own argument
 */
+// #[cfg(target_os = "linux")]
 // fn parse_exec_string(s:String)->Vec<String>{
 
 // }
@@ -67,6 +67,7 @@ pub struct AppInfo {
 pub struct AppParser {
     apps: Arc<RwLock<Vec<AppInfo>>>,
     config: AppParserConfig,
+    search_config:SearchConfig,
 }
 #[derive(Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -75,15 +76,14 @@ pub struct AppParserConfig {
 }
 impl Default for AppParserConfig {
     fn default() -> Self {
-        Self { base_priority: 0.0 }
+        Self { base_priority: 50.0 }
     }
 }
 impl ConfigDefault for AppParser {
-    fn create(config:&Config) -> Self {
+    fn create(config:&mut Config) -> Self {
         let app_list = Arc::new(RwLock::new(Vec::new()));
         let app_list_clone = app_list.clone();
         let t = tokio::task::spawn_blocking(|| async move {
-            let start = Instant::now();
             #[cfg(target_os = "windows")]
             {
                 use std::process::Stdio;
@@ -104,7 +104,6 @@ impl ConfigDefault for AppParser {
                 use icon::Icons;
 
                 let icons = Icons::new();
-                println!("{:?}", start.elapsed());
                 let lang = system_language().unwrap();
                 let app_dirs = [
                     if let Ok(s) = std::env::var("XDG_DATA_HOME") {
@@ -204,7 +203,7 @@ impl ConfigDefault for AppParser {
                                                     1,
                                                     "breeze-dark",
                                                 );
-                                                println!("{icon}: {:?}", find_default_icon);
+                                                // println!("{icon}: {:?}", find_default_icon);
                                                 find_default_icon
                                             })
                                             .flatten()
@@ -307,13 +306,12 @@ impl ConfigDefault for AppParser {
                 }
                 let mut app_list = app_list_clone.write().await;
                 *app_list = apps;
-                println!("{:?}", start.elapsed());
             }
         });
         tokio::spawn(async move {
             t.await.unwrap().await;
         });
-        Self { apps: app_list, config:config.get_namespace() }
+        Self { apps: app_list, config:config.get_namespace(), search_config: config.get_namespace() }
     }
 }
 #[async_trait]
@@ -336,7 +334,7 @@ impl QueryParser for AppParser {
                     .join(" ")
             })
             .collect();
-        let mut results = search(&query, &collect);
+        let mut results = search(&query, &collect, &self.search_config);
         for (priority, id, mark) in results.drain(..) {
             let s2 = apps[id].clone();
             let s3 = apps[id].clone();
@@ -375,7 +373,6 @@ impl QueryParser for AppParser {
                         {
                             if s3.terminal {
                                 let st = format!("\"$TERMINAL\" -e sh -c \"{}\"", s3.exec);
-                                println!("{}", st);
                                 let mut args = vec!["-c", st.as_str()];
                                 let _ = Command::new("sh")
                                     .args(&mut args)

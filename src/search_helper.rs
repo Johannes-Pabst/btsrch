@@ -1,12 +1,22 @@
-use std::time::Instant;
-
 use eframe::egui::{Align, Color32, FontSelection, Label, RichText, Style, Ui, text::LayoutJob};
+use serde::Deserialize;
 
-pub fn search(query: &String, list: &Vec<String>) -> Vec<(f32, usize, Vec<usize>)> {
+#[derive(Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SearchConfig{
+    priority_between_spaces:f32,
+    priority_after_space:f32,
+    priority_anywhere_whole:f32,
+}
+impl Default for SearchConfig{
+    fn default() -> Self {
+        Self { priority_between_spaces: 25.0, priority_after_space: 15.0, priority_anywhere_whole: 0.0 }
+    }
+}
+pub fn search(query: &String, list: &Vec<String>, config:&SearchConfig) -> Vec<(f32, usize, Vec<usize>)> {
     if query.len()==0{
         return (0..list.len()).map(|x| (0.0, x, Vec::new())).collect::<Vec<_>>();
     }
-    let start=Instant::now();
     let lower_case = query.to_lowercase();
     let non_found_ids = (0..list.len()).collect::<Vec<usize>>();
     let mut s_anywhere_whole = non_found_ids
@@ -17,7 +27,7 @@ pub fn search(query: &String, list: &Vec<String>) -> Vec<(f32, usize, Vec<usize>
                 let (_, lookup) = to_lowercase_lookup(&list[i]);
                 let h2 = lookup[h];
                 let h3 = lookup[h + lower_case.len()];
-                (0.0, i, vec![h2, h3])
+                (config.priority_anywhere_whole, i, vec![h2, h3])
             })
         })
         .collect::<Vec<(f32, usize, Vec<usize>)>>();
@@ -33,7 +43,7 @@ pub fn search(query: &String, list: &Vec<String>) -> Vec<(f32, usize, Vec<usize>
             split_multiple(&seperator_chars, list[i].clone())
                 .iter()
                 .find_map(|s| {
-                    (s.1.to_lowercase() == *lower_case).then(|| (0.0,i, vec![s.0, s.0 + s.1.len()]))
+                    (s.1.to_lowercase() == *lower_case).then(|| (config.priority_between_spaces,i, vec![s.0, s.0 + s.1.len()]))
                 })
         })
         .collect::<Vec<(f32, usize, Vec<usize>)>>();
@@ -49,7 +59,7 @@ pub fn search(query: &String, list: &Vec<String>) -> Vec<(f32, usize, Vec<usize>
                     (s.1.to_lowercase().starts_with(&lower_case)).then(|| {
                         let (_, lookup) = to_lowercase_lookup(&s.1);
                         let h3 = lookup[lower_case.len()];
-                        (0.0, i, vec![s.0, s.0 + h3])
+                        (config.priority_after_space, i, vec![s.0, s.0 + h3])
                     })
                 })
         })
@@ -57,7 +67,6 @@ pub fn search(query: &String, list: &Vec<String>) -> Vec<(f32, usize, Vec<usize>
     remove_found(&mut non_found_ids, &mut s_after_space);
     s_after_space.sort_by_key(|(_, _, h)| h[0]);
     s_anywhere_whole.sort_by_key(|(_,_, h)| h[0]);
-    println!("{:?}", start.elapsed());
     let mut temp=s_between_spaces
         .drain(..)
         .chain(s_after_space.drain(..)).collect::<Vec<_>>();

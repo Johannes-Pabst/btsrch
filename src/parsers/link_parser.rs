@@ -16,11 +16,11 @@ pub struct LinkParserConfig {
 }
 impl Default for LinkParserConfig {
     fn default() -> Self {
-        Self { base_priority: 0.0 }
+        Self { base_priority: 101.0 }
     }
 }
 impl ConfigDefault for LinkParser {
-    fn create(config: &crate::config::Config) -> Self {
+    fn create(config: &mut crate::config::Config) -> Self {
         Self {
             config: config.get_namespace(),
         }

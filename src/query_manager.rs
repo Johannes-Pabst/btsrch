@@ -12,7 +12,7 @@ pub trait QueryParser: BoxClone + Send + Sync + 'static {
     async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()>;
 }
 pub trait ConfigDefault{
-    fn create(config:&Config)->Self;
+    fn create(config:&mut Config)->Self;
 }
 /// stupid dumb crazy mad workaround for dyn compatibility
 pub trait BoxClone {
@@ -68,7 +68,7 @@ impl QueryManager {
     where
         T: QueryParser + ConfigDefault,
     {
-        self.parsers.push(Box::new(T::create(&self.config)));
+        self.parsers.push(Box::new(T::create(&mut self.config)));
     }
     pub fn add_custom_query_parser<T>(&mut self, parser: T)
     where

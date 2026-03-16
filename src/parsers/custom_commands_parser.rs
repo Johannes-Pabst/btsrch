@@ -5,13 +5,14 @@ use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::{
-    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{mark_text, search}
+    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{SearchConfig, mark_text, search}
 };
 
 #[derive(Clone)]
 pub struct CustomCommandsParser {
     scripts: Arc<RwLock<Vec<ScriptInfo>>>,
     config: CustomCommandsParserConfig,
+    search_config:SearchConfig,
 }
 #[derive(Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -20,7 +21,7 @@ pub struct CustomCommandsParserConfig {
 }
 impl Default for CustomCommandsParserConfig {
     fn default() -> Self {
-        Self { base_priority: 0.0 }
+        Self { base_priority: 70.0 }
     }
 }
 #[derive(Clone)]
@@ -31,7 +32,7 @@ struct ScriptInfo {
     _extension: String,
 }
 impl ConfigDefault for CustomCommandsParser {
-    fn create(config: &Config) -> Self {
+    fn create(config: &mut Config) -> Self {
         let scripts = Arc::new(RwLock::new(Vec::new()));
         let scripts_clone = scripts.clone();
         tokio::spawn(async move {
@@ -78,7 +79,7 @@ impl ConfigDefault for CustomCommandsParser {
             let mut scripts = scripts_clone.write().await;
             *scripts = s2;
         });
-        Self { scripts, config:config.get_namespace() }
+        Self { scripts, config:config.get_namespace(), search_config: config.get_namespace() }
     }
 }
 #[async_trait]
@@ -91,7 +92,7 @@ impl QueryParser for CustomCommandsParser {
             scripts = self.scripts.read().await;
         }
         let collect = scripts.iter().map(|s| s.name.clone()).collect();
-        for (priority, id, mark) in search(&query, &collect) {
+        for (priority, id, mark) in search(&query, &collect, &self.search_config) {
             let priority=self.config.base_priority+priority;
             let s2 = scripts[id].clone();
             let s3 = scripts[id].clone();
