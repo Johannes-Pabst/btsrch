@@ -9,9 +9,7 @@ use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::{
-    query_manager::{ListEntry, QueryParser},
-    search_helper::search,
-    unicode_parser::mark_text,
+    parsers::unicode_parser::mark_text, query_manager::{ListEntry, QueryParser}, search_helper::search
 };
 
 #[cfg(target_os = "linux")]

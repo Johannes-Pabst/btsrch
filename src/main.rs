@@ -4,7 +4,8 @@ pub mod config;
 pub mod parsers;
 pub mod query_manager;
 pub mod search_helper;
-pub mod unicode_parser;
+pub mod parsers;
+pub mod config;
 
 use std::sync::Arc;
 
@@ -18,9 +19,9 @@ use crate::parsers::app_parser::AppParser;
 use crate::parsers::custom_commands_parser::CustomCommandsParser;
 use crate::parsers::link_parser::LinkParser;
 use crate::parsers::path_parser::PathParser;
-use crate::parsers::unit_calc_parser::main::UnitCalcParser;
+use crate::parsers::unicode_parser::UnicodeParser;
 use crate::query_manager::{ChangeInstruction, ListEntry, QueryManager};
-use crate::unicode_parser::UnicodeParser;
+use crate::parsers::unit_calc_parser::main::UnitCalcParser;
 
 struct SearchApp {
     query: String,
@@ -284,12 +285,17 @@ async fn main() {
     }
     let (atx, rx) = mpsc::channel::<String>(128);
     let (tx, arx) = mpsc::channel::<ChangeInstruction>(128);
+    let mut mgr = QueryManager::new(rx, tx, std::env::current_exe()
+            .unwrap()
+            .ancestors()
+            .nth(3)
+            .unwrap()
+            .join("config.toml").to_str().unwrap().to_string()).await;
     eframe::run_native(
         "BTSRCH",
         options,
         Box::new(|cc| {
             let app = SearchApp::new(atx, arx);
-            let mut mgr = QueryManager::new(rx, tx);
             let a = tokio::task::spawn_blocking(|| async move {
                 mgr.add_query_parser::<CustomCommandsParser>();
                 mgr.add_query_parser::<LinkParser>();

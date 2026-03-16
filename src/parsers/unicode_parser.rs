@@ -56,7 +56,7 @@ impl Default for UnicodeParser {
         let unicode_list = Arc::new(RwLock::new(Vec::new()));
         let unicode_list_clone = unicode_list.clone();
         tokio::spawn(async move {
-            let filee = include_str!("../list.with.images.with.modifiers.json");
+            let filee = include_str!("../../list.with.images.with.modifiers.json");
             let emojis_raw: EmojiList = serde_json::from_str(&filee).unwrap();
             let emojis = emojis_raw
                 .emojis
@@ -70,7 +70,7 @@ impl Default for UnicodeParser {
                     )))),
                 })
                 .collect::<Vec<UnicodeChar>>();
-            let fileu = include_str!("../UnicodeData.txt");
+            let fileu = include_str!("../../UnicodeData.txt");
             let mut chars = fileu
                 .lines()
                 .filter(|l| l.len() > 0)
