@@ -3,8 +3,8 @@ use std::{sync::Arc, time::Duration};
 use async_trait::async_trait;
 use base64::Engine;
 use eframe::egui::{
-    Align, Color32, ColorImage, FontSelection, Image, Label, RichText, Style, TextureHandle,
-    TextureOptions, Ui, Vec2, text::LayoutJob,
+    ColorImage, Image, TextureHandle,
+    TextureOptions, Vec2,
 };
 use image::ImageFormat;
 use serde::Deserialize;
@@ -14,7 +14,7 @@ use tokio::{
 };
 
 use crate::{
-    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::search
+    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{mark_text, search}
 };
 
 #[derive(Clone, Deserialize)]
@@ -179,27 +179,4 @@ impl QueryParser for UnicodeParser {
         }
         None
     }
-}
-
-pub fn mark_text(s: String, mark: &Vec<usize>, ui: &mut Ui) {
-    let style = Style::default();
-    let mut text = LayoutJob::default();
-    let mut last = 0;
-    let mut marked = false;
-    for i in mark.iter().chain(std::iter::once(&s.len())) {
-        let curtxt = s[last..*i].to_string();
-        if !marked {
-            RichText::new(curtxt)
-                .color(Color32::from_rgb(255, 255, 255))
-                .append_to(&mut text, &style, FontSelection::Default, Align::Center);
-        } else {
-            RichText::new(curtxt)
-                .color(Color32::from_rgb(0, 255, 255))
-                .underline()
-                .append_to(&mut text, &style, FontSelection::Default, Align::Center);
-        }
-        last = *i;
-        marked = !marked;
-    }
-    ui.add(Label::new(text).wrap());
 }

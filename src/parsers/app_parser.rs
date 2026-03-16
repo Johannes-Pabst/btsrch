@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::{
-    config::Config, parsers::unicode_parser::mark_text, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::search
+    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{mark_text, search}
 };
 
 #[cfg(target_os = "linux")]

@@ -1,5 +1,7 @@
 use std::time::Instant;
 
+use eframe::egui::{Align, Color32, FontSelection, Label, RichText, Style, Ui, text::LayoutJob};
+
 pub fn search(query: &String, list: &Vec<String>) -> Vec<(f32, usize, Vec<usize>)> {
     if query.len()==0{
         return (0..list.len()).map(|x| (0.0, x, Vec::new())).collect::<Vec<_>>();
@@ -99,11 +101,32 @@ fn to_lowercase_lookup(s: &String) -> (String, Vec<usize>) {
     }
     (string, indices)
 }
+pub fn mark_text(s: String, mark: &Vec<usize>, ui: &mut Ui) {
+    let style = Style::default();
+    let mut text = LayoutJob::default();
+    let mut last = 0;
+    let mut marked = false;
+    for i in mark.iter().chain(std::iter::once(&s.len())) {
+        let curtxt = s[last..*i].to_string();
+        if !marked {
+            RichText::new(curtxt)
+                .color(Color32::from_rgb(255, 255, 255))
+                .append_to(&mut text, &style, FontSelection::Default, Align::Center);
+        } else {
+            RichText::new(curtxt)
+                .color(Color32::from_rgb(0, 255, 255))
+                .underline()
+                .append_to(&mut text, &style, FontSelection::Default, Align::Center);
+        }
+        last = *i;
+        marked = !marked;
+    }
+    ui.add(Label::new(text).wrap());
+}
+
 /*
 todo:
 for search term cinnamonn:
-cinnamon-wayland
-org.cinnamon.screensaver
 cinnamon2d
 
 for search term cinnamon screensaver:
