@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use tokio::{sync::mpsc, task::JoinHandle};
 
+use crate::config::Config;
+
 pub type LayoutFn = Box<dyn FnMut(&mut eframe::egui::Ui) + Send + Sync>;
 pub type ExecuteFn = Box<dyn FnMut() + Send + Sync>;
 pub type ScrollToFn = Box<dyn FnMut() + Send + Sync>;
@@ -9,7 +11,9 @@ pub type ScrollToFn = Box<dyn FnMut() + Send + Sync>;
 pub trait QueryParser: BoxClone + Send + Sync + 'static {
     async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()>;
 }
-
+pub trait ConfigDefault{
+    fn create(config:&Config)->Self;
+}
 /// stupid dumb crazy mad workaround for dyn compatibility
 pub trait BoxClone {
     fn clone_box(&self) -> Box<dyn QueryParser>;
@@ -38,17 +42,20 @@ pub struct QueryManager {
     parsers: Vec<Box<dyn QueryParser>>,
     signal_receiver: mpsc::Receiver<String>,
     layout_sender: mpsc::Sender<ChangeInstruction>,
+    config:Config,
 }
 
 impl QueryManager {
-    pub fn new(
+    pub async fn new(
         signal_receiver: mpsc::Receiver<String>,
         layout_sender: mpsc::Sender<ChangeInstruction>,
+        path:String,
     ) -> Self {
         QueryManager {
             signal_receiver,
             layout_sender,
             parsers: Vec::new(),
+            config:Config::load(path).await,
         }
     }
     pub fn add_query_parser<T>(&mut self)
@@ -56,6 +63,12 @@ impl QueryManager {
         T: QueryParser + Default,
     {
         self.parsers.push(Box::new(T::default()));
+    }
+    pub fn add_query_parser_config<T>(&mut self)
+    where
+        T: QueryParser + ConfigDefault,
+    {
+        self.parsers.push(Box::new(T::create(&self.config)));
     }
     pub fn add_custom_query_parser<T>(&mut self, parser: T)
     where
