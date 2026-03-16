@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+pub mod config;
+pub mod parsers;
 pub mod query_manager;
 pub mod search_helper;
 pub mod unicode_parser;
-pub mod parsers;
-pub mod config;
 
 use std::sync::Arc;
 
@@ -18,9 +18,9 @@ use crate::parsers::app_parser::AppParser;
 use crate::parsers::custom_commands_parser::CustomCommandsParser;
 use crate::parsers::link_parser::LinkParser;
 use crate::parsers::path_parser::PathParser;
+use crate::parsers::unit_calc_parser::main::UnitCalcParser;
 use crate::query_manager::{ChangeInstruction, ListEntry, QueryManager};
 use crate::unicode_parser::UnicodeParser;
-use crate::parsers::unit_calc_parser::main::UnitCalcParser;
 
 struct SearchApp {
     query: String,
@@ -31,6 +31,7 @@ struct SearchApp {
     scroll_todo: bool,
     had_focus: bool,
     last_input: String,
+    first: bool,
 }
 
 impl SearchApp {
@@ -44,6 +45,7 @@ impl SearchApp {
             had_focus: false,
             scroll_todo: false,
             last_input: String::new(),
+            first: true,
         }
     }
 }
@@ -196,6 +198,30 @@ impl eframe::App for SearchApp {
                         });
                     });
             });
+        if self.first {
+            ctx.set_visuals(egui::Visuals {
+                window_fill: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0),
+                ..egui::Visuals::dark()
+            });
+            let mut style = (*ctx.style()).clone();
+            style.visuals.override_text_color = Some(egui::Color32::WHITE);
+            ctx.set_style(style);
+
+            let mut fonts = egui::FontDefinitions::default();
+            fonts.font_data.insert(
+                "unifont".to_owned(),
+                Arc::new(egui::FontData::from_static(include_bytes!(
+                    r"../UnifontExMono.ttf"
+                ))),
+            );
+            fonts
+                .families
+                .get_mut(&egui::FontFamily::Proportional)
+                .unwrap()
+                .insert(0, "unifont".to_owned());
+            ctx.set_fonts(fonts);
+            self.first = false;
+        }
     }
 }
 
@@ -276,27 +302,6 @@ async fn main() {
             tokio::spawn(async move {
                 a.await.unwrap().await;
             });
-            cc.egui_ctx.set_visuals(egui::Visuals {
-                window_fill: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0),
-                ..egui::Visuals::dark()
-            });
-            let mut style = (*cc.egui_ctx.style()).clone();
-            style.visuals.override_text_color = Some(egui::Color32::WHITE);
-            cc.egui_ctx.set_style(style);
-
-            let mut fonts = egui::FontDefinitions::default();
-            fonts.font_data.insert(
-                "unifont".to_owned(),
-                Arc::new(egui::FontData::from_static(include_bytes!(
-                    r"../UnifontExMono.ttf"
-                ))),
-            );
-            fonts
-                .families
-                .get_mut(&egui::FontFamily::Proportional)
-                .unwrap()
-                .insert(0, "unifont".to_owned());
-            cc.egui_ctx.set_fonts(fonts);
             Ok(Box::new(app))
         }),
     )
