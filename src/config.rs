@@ -15,14 +15,23 @@ impl Config {
     }
     pub fn get_namespace<T>(&self) -> T
     where
-        T: ConfigType,
+        T: DeserializeOwned + Default,
     {
-        self.data
-            .get(type_name::<T>().rsplit("::").next().unwrap())
-            .unwrap()
-            .clone()
-            .try_into()
-            .unwrap()
+        let mut name = type_name::<T>().rsplit("::").next().unwrap();
+        if name.ends_with("Config"){
+            name=&name[..name.len()-"Config".len()];
+        }
+        if let Some(a) = self.data.get(name) {
+            match a.clone().try_into() {
+                Ok(v)=>v,
+                Err(e)=>{
+                    println!("{:?}", e);
+                    T::default()
+                }
+            }
+        }else{
+            println!("config file missing entry \"{}\"", name);
+            T::default()
+        }
     }
 }
-pub trait ConfigType: DeserializeOwned {}

@@ -4,8 +4,6 @@ pub mod config;
 pub mod parsers;
 pub mod query_manager;
 pub mod search_helper;
-pub mod parsers;
-pub mod config;
 
 use std::sync::Arc;
 
@@ -20,8 +18,8 @@ use crate::parsers::custom_commands_parser::CustomCommandsParser;
 use crate::parsers::link_parser::LinkParser;
 use crate::parsers::path_parser::PathParser;
 use crate::parsers::unicode_parser::UnicodeParser;
-use crate::query_manager::{ChangeInstruction, ListEntry, QueryManager};
 use crate::parsers::unit_calc_parser::main::UnitCalcParser;
+use crate::query_manager::{ChangeInstruction, ListEntry, QueryManager};
 
 struct SearchApp {
     query: String,
@@ -285,31 +283,32 @@ async fn main() {
     }
     let (atx, rx) = mpsc::channel::<String>(128);
     let (tx, arx) = mpsc::channel::<ChangeInstruction>(128);
-    let mut mgr = QueryManager::new(rx, tx, std::env::current_exe()
+    let mut mgr = QueryManager::new(
+        rx,
+        tx,
+        std::env::current_exe()
             .unwrap()
             .ancestors()
             .nth(3)
             .unwrap()
-            .join("config.toml").to_str().unwrap().to_string()).await;
-    eframe::run_native(
-        "BTSRCH",
-        options,
-        Box::new(|cc| {
-            let app = SearchApp::new(atx, arx);
-            let a = tokio::task::spawn_blocking(|| async move {
-                mgr.add_query_parser::<CustomCommandsParser>();
-                mgr.add_query_parser::<LinkParser>();
-                mgr.add_query_parser::<PathParser>();
-                mgr.add_query_parser::<UnitCalcParser>();
-                mgr.add_query_parser::<AppParser>();
-                mgr.add_query_parser::<UnicodeParser>();
-                mgr.start().await.unwrap();
-            });
-            tokio::spawn(async move {
-                a.await.unwrap().await;
-            });
-            Ok(Box::new(app))
-        }),
+            .join("config.toml")
+            .to_str()
+            .unwrap()
+            .to_string(),
     )
-    .unwrap();
+    .await;
+    let app = SearchApp::new(atx, arx);
+    let a = tokio::task::spawn_blocking(|| async move {
+        mgr.add_query_parser_config::<CustomCommandsParser>();
+        mgr.add_query_parser_config::<LinkParser>();
+        mgr.add_query_parser_config::<PathParser>();
+        mgr.add_query_parser_config::<UnitCalcParser>();
+        mgr.add_query_parser_config::<AppParser>();
+        mgr.add_query_parser_config::<UnicodeParser>();
+        mgr.start().await.unwrap();
+    });
+    tokio::spawn(async move {
+        a.await.unwrap().await;
+    });
+    eframe::run_native("BTSRCH", options, Box::new(|_cc| Ok(Box::new(app)))).unwrap();
 }

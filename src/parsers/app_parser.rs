@@ -1,5 +1,6 @@
 use std::{process::Command, sync::Arc, time::Instant};
 
+use serde::Deserialize;
 #[cfg(target_os = "windows")]
 use serde::Deserialize;
 #[cfg(target_os = "windows")]
@@ -9,7 +10,7 @@ use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::{
-    parsers::unicode_parser::mark_text, query_manager::{ListEntry, QueryParser}, search_helper::search
+    config::Config, parsers::unicode_parser::mark_text, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::search
 };
 
 #[cfg(target_os = "linux")]
@@ -50,7 +51,7 @@ pub struct AppInfo {
     pub filename: String,
     pub name: String,
     pub exec: String,
-    pub terminal:bool,
+    pub terminal: bool,
     pub search_terms: Option<String>,
     pub icon: Option<String>,
 }
@@ -65,9 +66,20 @@ pub struct AppInfo {
 #[derive(Clone)]
 pub struct AppParser {
     apps: Arc<RwLock<Vec<AppInfo>>>,
+    config: AppParserConfig,
 }
-impl Default for AppParser {
+#[derive(Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AppParserConfig {
+    base_priority: f32,
+}
+impl Default for AppParserConfig {
     fn default() -> Self {
+        Self { base_priority: 0.0 }
+    }
+}
+impl ConfigDefault for AppParser {
+    fn create(config:&Config) -> Self {
         let app_list = Arc::new(RwLock::new(Vec::new()));
         let app_list_clone = app_list.clone();
         let t = tokio::task::spawn_blocking(|| async move {
@@ -98,14 +110,20 @@ impl Default for AppParser {
                     if let Ok(s) = std::env::var("XDG_DATA_HOME") {
                         s.split(":").map(|s| format!("{s}/applications")).collect()
                     } else {
-                        vec![format!("{}/.local/share/applications", std::env::var("HOME").unwrap())]
+                        vec![format!(
+                            "{}/.local/share/applications",
+                            std::env::var("HOME").unwrap()
+                        )]
                     },
                     if let Ok(s) = std::env::var("XDG_DATA_DIRS") {
                         s.split(":").map(|s| format!("{s}/applications")).collect()
                     } else {
                         vec![format!("/usr/share/applications")]
                     },
-                ].into_iter().flatten().collect::<Vec<String>>();
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<String>>();
                 let mut apps = Vec::new();
                 for dir in app_dirs {
                     use std::path::Path;
@@ -295,7 +313,7 @@ impl Default for AppParser {
         tokio::spawn(async move {
             t.await.unwrap().await;
         });
-        Self { apps: app_list }
+        Self { apps: app_list, config:config.get_namespace() }
     }
 }
 #[async_trait]
@@ -307,26 +325,21 @@ impl QueryParser for AppParser {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             apps = self.apps.read().await;
         }
-        let mut results = search(
-            &query,
-            apps.iter()
-                .map(|a| {
-                    (
-                        Some(a.name.clone())
-                            .iter()
-                            .chain(a.search_terms.iter())
-                            .map(|s| s.clone())
-                            .collect::<Vec<String>>()
-                            .join(" "),
-                        a,
-                    )
-                })
-                .collect(),
-        );
-        for s in results.drain(..) {
-            let priority = 1.0;
-            let s2 = apps[s.0].clone();
-            let s3 = apps[s.0].clone();
+        let collect = apps
+            .iter()
+            .map(|a| {
+                Some(a.name.clone())
+                    .iter()
+                    .chain(a.search_terms.iter())
+                    .map(|s| s.clone())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            })
+            .collect();
+        let mut results = search(&query, &collect);
+        for (priority, id, mark) in results.drain(..) {
+            let s2 = apps[id].clone();
+            let s3 = apps[id].clone();
             resopnse
                 .send(ListEntry {
                     layout_fn: Box::new(move |ui| {
@@ -348,7 +361,7 @@ impl QueryParser for AppParser {
                                 .map(|s| s.clone())
                                 .collect::<Vec<String>>()
                                 .join(" "),
-                            &s.1,
+                            &mark,
                             ui,
                         );
                     }),
@@ -360,8 +373,8 @@ impl QueryParser for AppParser {
                         }
                         #[cfg(target_os = "linux")]
                         {
-                            if s3.terminal{
-                                let st=format!("\"$TERMINAL\" -e sh -c \"{}\"", s3.exec);
+                            if s3.terminal {
+                                let st = format!("\"$TERMINAL\" -e sh -c \"{}\"", s3.exec);
                                 println!("{}", st);
                                 let mut args = vec!["-c", st.as_str()];
                                 let _ = Command::new("sh")
@@ -371,7 +384,7 @@ impl QueryParser for AppParser {
                                     .stderr(std::process::Stdio::null())
                                     .spawn()
                                     .unwrap();
-                            }else{
+                            } else {
                                 let mut args = s3
                                     .exec
                                     .split(' ')
@@ -388,7 +401,7 @@ impl QueryParser for AppParser {
                         }
                         std::process::exit(0);
                     })),
-                    priority,
+                    priority:priority+self.config.base_priority,
                 })
                 .await
                 .ok()?;

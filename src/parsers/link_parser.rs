@@ -1,19 +1,34 @@
 use async_trait::async_trait;
 use regex::Regex;
+use serde::Deserialize;
 use tokio::sync::mpsc;
 
-use crate::query_manager::{ListEntry, QueryParser};
+use crate::query_manager::{ConfigDefault, ListEntry, QueryParser};
 
 #[derive(Clone)]
-pub struct LinkParser {}
-impl Default for LinkParser {
+pub struct LinkParser {
+    config: LinkParserConfig,
+}
+#[derive(Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct LinkParserConfig {
+    base_priority: f32,
+}
+impl Default for LinkParserConfig {
     fn default() -> Self {
-        Self {}
+        Self { base_priority: 0.0 }
+    }
+}
+impl ConfigDefault for LinkParser {
+    fn create(config: &crate::config::Config) -> Self {
+        Self {
+            config: config.get_namespace(),
+        }
     }
 }
 #[async_trait]
 impl QueryParser for LinkParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) ->Option<()>{
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
         let top_level_domains = vec![
             "com", // Commercial
             "org", // Organization
@@ -26,8 +41,7 @@ impl QueryParser for LinkParser {
             "ca",  // Canada
             "de",  // Germany
             "rs",  // docs.rs
-            "tv",
-            "link",
+            "tv", "link",
         ];
         let word = r"([A-Za-z0-9_\-]+)";
         let bword = r"([A-Za-z0-9_\-%\.]+)";
@@ -51,13 +65,16 @@ impl QueryParser for LinkParser {
                         ui.label(format!("open {} in the browser", &q2));
                     }),
                     execute: Some(Box::new(move || {
+                        #[cfg(target_os = "windows")]
                         open::that_in_background(&final_link)
                             .join()
                             .unwrap()
                             .unwrap();
+                        #[cfg(target_os = "linux")]
+                        open::that_in_background(&final_link);
                         std::process::exit(0);
                     })),
-                    priority: 100.0,
+                    priority: self.config.base_priority,
                 })
                 .await
                 .ok()?;

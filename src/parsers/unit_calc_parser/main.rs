@@ -1,32 +1,43 @@
 use arboard::Clipboard;
 use async_trait::async_trait;
+use serde::Deserialize;
 use tokio::sync::mpsc;
 
 use crate::{
-    query_manager::{ListEntry, QueryParser},
     parsers::unit_calc_parser::{
         lexer::{get_units, lex},
         parser::{UnitCalculation, parse_unit_conversion},
         unit_number_parser::superscript,
     },
+    query_manager::{ConfigDefault, ListEntry, QueryParser},
 };
 
 #[derive(Clone)]
-pub struct UnitCalcParser {}
-impl Default for UnitCalcParser {
+pub struct UnitCalcParser {
+    config: UnitCalcParserConfig,
+}
+#[derive(Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct UnitCalcParserConfig {
+    base_priority: f32,
+    error_priority: f32,
+}
+impl Default for UnitCalcParserConfig {
     fn default() -> Self {
-        Self {}
+        Self { base_priority: 0.0, error_priority:0.0 }
+    }
+}
+impl ConfigDefault for UnitCalcParser {
+    fn create(config:&crate::config::Config)->Self {
+        Self { config: config.get_namespace() }
     }
 }
 #[async_trait]
 impl QueryParser for UnitCalcParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()> {
-        let len = query.len();
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
         let (text, priority) = match execute_unit_str(query) {
-            Ok(v) => {
-                (v, (len as f32))
-            },
-            Err(e) => (format!("error: {e}"),-1.0),
+            Ok(v) => (v,self.config.base_priority),
+            Err(e) => (e,self.config.error_priority),
         };
         let text2 = text.clone();
         resopnse
@@ -39,7 +50,8 @@ impl QueryParser for UnitCalcParser {
                 })),
                 priority: priority,
             })
-            .await.ok()?;
+            .await
+            .ok()?;
         None
     }
 }
@@ -49,7 +61,7 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
     let ast = parse_unit_conversion(tokens)?;
     let (un, mut u, tu) = ast.execute()?;
     let mut exponent = 1;
-    if u.is_none()&&tu.is_none() {
+    if u.is_none() && tu.is_none() {
         let mut best_score = f64::NEG_INFINITY;
         for unit in units {
             let cleaned = unit.si.cleaned();
@@ -89,25 +101,21 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
         }
     }
     if let Some(u) = u {
-        let unum=UnitCalculation::Div(
-                Box::new(UnitCalculation::Number(un.clone())),
-                Box::new(UnitCalculation::Number(u.si.pow_i64(exponent).clone()))
-            )
-            .execute()
-            .unwrap();
-        if unum.units.len()>0{
+        let unum = UnitCalculation::Div(
+            Box::new(UnitCalculation::Number(un.clone())),
+            Box::new(UnitCalculation::Number(u.si.pow_i64(exponent).clone())),
+        )
+        .execute()
+        .unwrap();
+        if unum.units.len() > 0 {
             return Err("incompatible target unit".to_string());
         }
-        let unit_number = format!(
-            "{:.5}",
-            unum
-            .num
-        )
-        .trim_end_matches('0')
-        .trim_end_matches('.')
-        .to_string();
-    let mut uname = u.plural;
-    if unit_number == "1".to_string() {
+        let unit_number = format!("{:.5}", unum.num)
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string();
+        let mut uname = u.plural;
+        if unit_number == "1".to_string() {
             uname = u.name;
         }
         if exponent == 1 {
@@ -120,25 +128,21 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
                 superscript(exponent.to_string())
             ))
         }
-    }else if let Some(tu)=tu{
-        let unum=UnitCalculation::Div(
-                Box::new(UnitCalculation::Number(un.clone())),
-                Box::new(UnitCalculation::Number(tu.0.clone()))
-            )
-            .execute()
-            .unwrap();
-        if unum.units.len()>0{
+    } else if let Some(tu) = tu {
+        let unum = UnitCalculation::Div(
+            Box::new(UnitCalculation::Number(un.clone())),
+            Box::new(UnitCalculation::Number(tu.0.clone())),
+        )
+        .execute()
+        .unwrap();
+        if unum.units.len() > 0 {
             return Err("incompatible target unit".to_string());
         }
-        let unit_number = format!(
-            "{:.5}",
-            unum
-            .num
-        )
-        .trim_end_matches('0')
-        .trim_end_matches('.')
-        .to_string();
-        Ok(format!("{unit_number} {}",tu.1))
+        let unit_number = format!("{:.5}", unum.num)
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string();
+        Ok(format!("{unit_number} {}", tu.1))
     } else {
         Ok(un.to_string())
     }
