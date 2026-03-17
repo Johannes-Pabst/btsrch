@@ -4,11 +4,12 @@ pub mod config;
 pub mod parsers;
 pub mod query_manager;
 pub mod search_helper;
+pub mod ui_config;
 
 use std::sync::Arc;
 
-use eframe::egui::{self, Color32, CornerRadius, Margin, Stroke};
-use egui::{Align, CentralPanel, FontId, Key, Layout, Modifiers, Shadow};
+use eframe::egui;
+use egui::{Align, CentralPanel, FontId, Key, Layout, Modifiers};
 use egui::{Frame, TextEdit};
 use existing_instance::Endpoint;
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,7 @@ use crate::parsers::path_parser::PathParser;
 use crate::parsers::unicode_parser::UnicodeParser;
 use crate::parsers::unit_calc_parser::main::UnitCalcParser;
 use crate::query_manager::{ChangeInstruction, ListEntry, QueryManager};
+use crate::ui_config::UIConfig;
 
 struct SearchApp {
     query: String,
@@ -34,342 +36,6 @@ struct SearchApp {
     last_input: String,
     first: bool,
     config: UIConfig,
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct UIConfig {
-    textbox_frame: FrameConfig,
-    outer_frame: FrameConfig,
-    non_selected_result_frame:FrameConfig,
-    selected_result_frame:FrameConfig,
-}
-impl Default for UIConfig {
-    fn default() -> Self {
-        Self {
-            textbox_frame: FrameConfig {
-                inner_margin: MarginConfig {
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                },
-                fill: RgbaConfig {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0,
-                },
-                stroke: StrokeConfig {
-                    width: 0.0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                },
-                corner_radius: CornerRadiusConfig::One(0),
-                outer_margin: MarginConfig {
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                },
-                shadow: ShadowConfig {
-                    blur: 0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                    offset_x: 0,
-                    offset_y: 0,
-                    spread: 0,
-                },
-            },
-            outer_frame: FrameConfig {
-                inner_margin: MarginConfig {
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                },
-                fill: RgbaConfig {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0,
-                },
-                stroke: StrokeConfig {
-                    width: 0.0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                },
-                corner_radius: CornerRadiusConfig::One(0),
-                outer_margin: MarginConfig {
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                },
-                shadow: ShadowConfig {
-                    blur: 0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                    offset_x: 0,
-                    offset_y: 0,
-                    spread: 0,
-                },
-            },
-            non_selected_result_frame: FrameConfig {
-                inner_margin: MarginConfig {
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                },
-                fill: RgbaConfig {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0,
-                },
-                stroke: StrokeConfig {
-                    width: 0.0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                },
-                corner_radius: CornerRadiusConfig::One(0),
-                outer_margin: MarginConfig {
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                },
-                shadow: ShadowConfig {
-                    blur: 0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                    offset_x: 0,
-                    offset_y: 0,
-                    spread: 0,
-                },
-            },
-            selected_result_frame: FrameConfig {
-                inner_margin: MarginConfig {
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                },
-                fill: RgbaConfig {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0,
-                },
-                stroke: StrokeConfig {
-                    width: 0.0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                },
-                corner_radius: CornerRadiusConfig::One(0),
-                outer_margin: MarginConfig {
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                },
-                shadow: ShadowConfig {
-                    blur: 0,
-                    color: RgbaConfig {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0,
-                    },
-                    offset_x: 0,
-                    offset_y: 0,
-                    spread: 0,
-                },
-            },
-        }
-    }
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct RgbaConfig {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
-}
-impl Default for RgbaConfig {
-    fn default() -> Self {
-        Self {
-            r: 255,
-            g: 0,
-            b: 0,
-            a: 255,
-        }
-    }
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct ShadowConfig {
-    pub offset_x: i8,
-    pub offset_y: i8,
-    pub blur: u8,
-    pub spread: u8,
-    pub color: RgbaConfig,
-}
-impl Default for ShadowConfig {
-    fn default() -> Self {
-        Self {
-            offset_x: 0,
-            offset_y: 0,
-            blur: 0,
-            spread: 0,
-            color: Default::default(),
-        }
-    }
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct FrameConfig {
-    pub inner_margin: MarginConfig,
-    pub fill: RgbaConfig,
-    pub stroke: StrokeConfig,
-    pub corner_radius: CornerRadiusConfig,
-    pub outer_margin: MarginConfig,
-    pub shadow: ShadowConfig,
-}
-impl Default for FrameConfig {
-    fn default() -> Self {
-        Self {
-            inner_margin: Default::default(),
-            fill: Default::default(),
-            stroke: Default::default(),
-            corner_radius: Default::default(),
-            outer_margin: Default::default(),
-            shadow: Default::default(),
-        }
-    }
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct MarginConfig {
-    pub left: i8,
-    pub right: i8,
-    pub top: i8,
-    pub bottom: i8,
-}
-impl Default for MarginConfig {
-    fn default() -> Self {
-        Self {
-            left: Default::default(),
-            right: Default::default(),
-            top: Default::default(),
-            bottom: Default::default(),
-        }
-    }
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct StrokeConfig {
-    pub width: f32,
-    pub color: RgbaConfig,
-}
-impl Default for StrokeConfig {
-    fn default() -> Self {
-        Self {
-            width: Default::default(),
-            color: Default::default(),
-        }
-    }
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum CornerRadiusConfig {
-    One(u8),
-    All(CornerRadiusDetailedConfig),
-}
-impl Default for CornerRadiusConfig {
-    fn default() -> Self {
-        Self::One(0)
-    }
-}
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct CornerRadiusDetailedConfig {
-    pub nw: u8,
-    pub ne: u8,
-    pub sw: u8,
-    pub se: u8,
-}
-impl Default for CornerRadiusDetailedConfig {
-    fn default() -> Self {
-        Self {
-            nw: Default::default(),
-            ne: Default::default(),
-            sw: Default::default(),
-            se: Default::default(),
-        }
-    }
-}
-impl From<FrameConfig> for Frame{
-    fn from(value: FrameConfig) -> Self {
-        Frame { inner_margin: value.inner_margin.into(), fill: value.fill.into(), stroke: value.stroke.into(), corner_radius: value.corner_radius.into(), outer_margin: value.outer_margin.into(), shadow: value.shadow.into() }
-    }
-}
-impl From<MarginConfig> for Margin{
-    fn from(value: MarginConfig) -> Self {
-        Margin { left:value.left, right:value.right, top:value.top, bottom:value.bottom }
-    }
-}
-impl From<RgbaConfig> for Color32{
-    fn from(value: RgbaConfig) -> Self {
-        Color32::from_rgba_unmultiplied(value.r, value.g, value.b, value.a)
-    }
-}
-impl From<StrokeConfig> for Stroke{
-    fn from(value: StrokeConfig) -> Self {
-        Stroke { width: value.width, color: value.color.into() }
-    }
-}
-impl From<CornerRadiusConfig> for CornerRadius{
-    fn from(value: CornerRadiusConfig) -> Self {
-        match value{
-            CornerRadiusConfig::All(c)=>CornerRadius { nw: c.nw, ne: c.ne, sw: c.sw, se: c.se },
-            CornerRadiusConfig::One(x)=>CornerRadius::same(x),
-        }
-    }
-}
-impl From<ShadowConfig> for Shadow{
-    fn from(value: ShadowConfig) -> Self {
-        Shadow { offset: [value.offset_x, value.offset_y], blur: value.blur, spread: value.spread, color: value.color.into() }
-    }
 }
 impl SearchApp {
     fn new(
@@ -438,31 +104,30 @@ impl eframe::App for SearchApp {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 }
-                let f:Frame=self.config.textbox_frame.clone().into();
-                f
-                    .show(ui, |ui| {
-                        ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-                            let resp = ui.add(
-                                TextEdit::singleline(&mut self.query)
-                                    // .hint_text("Type to search...")
-                                    .desired_width(f32::INFINITY)
-                                    .lock_focus(true)
-                                    .font(FontId::new(24.0, egui::FontFamily::Proportional))
-                                    .frame(false),
-                            );
-                            resp.request_focus();
-                            if resp.changed() {
-                                let q = self.query.clone();
-                                if self.last_input != q {
-                                    let sender = self.query_sender.clone();
-                                    self.last_input = q.clone();
-                                    tokio::spawn(async move {
-                                        sender.send(q).await.unwrap();
-                                    });
-                                }
+                let f: Frame = self.config.textbox_frame.clone().into();
+                f.show(ui, |ui| {
+                    ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+                        let resp = ui.add(
+                            TextEdit::singleline(&mut self.query)
+                                // .hint_text("Type to search...")
+                                .desired_width(f32::INFINITY)
+                                .lock_focus(true)
+                                .font(FontId::new(24.0, egui::FontFamily::Proportional))
+                                .frame(false),
+                        );
+                        resp.request_focus();
+                        if resp.changed() {
+                            let q = self.query.clone();
+                            if self.last_input != q {
+                                let sender = self.query_sender.clone();
+                                self.last_input = q.clone();
+                                tokio::spawn(async move {
+                                    sender.send(q).await.unwrap();
+                                });
                             }
-                        });
+                        }
                     });
+                });
                 egui::ScrollArea::vertical()
                     .scroll_bar_visibility(
                         egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
@@ -493,16 +158,17 @@ impl eframe::App for SearchApp {
                             }
                             for i in 0..self.layout.len() {
                                 let l = &mut self.layout[i];
-                                let frame:Frame=if i==self.selected_id{
+                                let frame: Frame = if i == self.selected_id {
                                     self.config.selected_result_frame.clone()
-                                }else{
+                                } else {
                                     self.config.non_selected_result_frame.clone()
-                                }.into();
-                                let frame=frame.show(ui, |ui| {
-                                        ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-                                            (l.layout_fn)(ui);
-                                        });
+                                }
+                                .into();
+                                let frame = frame.show(ui, |ui| {
+                                    ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+                                        (l.layout_fn)(ui);
                                     });
+                                });
                                 if self.scroll_todo && self.selected_id == i {
                                     frame.response.scroll_to_me(None);
                                     self.scroll_todo = false;
@@ -537,7 +203,17 @@ impl eframe::App for SearchApp {
         }
     }
 }
-
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct InitConfig{
+    width:f32,
+    height:f32,
+}
+impl Default for InitConfig{
+    fn default() -> Self {
+        Self { width: 500.0, height: 1000.0 }
+    }
+}
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     let mut options = eframe::NativeOptions::default();
@@ -547,28 +223,41 @@ async fn main() {
         println!("already open...");
         std::process::exit(0);
     }
+    let mut config = Config::load(
+        std::env::current_exe()
+            .unwrap()
+            .ancestors()
+            .nth(3)
+            .unwrap()
+            .join("config.toml")
+            .to_str()
+            .unwrap()
+            .to_string(),
+    )
+    .await;
+    let init_config:InitConfig=config.get_namespace();
     #[cfg(target_os = "windows")]
     {
         options.centered = true;
         options.viewport = egui::ViewportBuilder::default()
             .with_decorations(false)
             .with_transparent(true)
-            .with_inner_size(egui::vec2(500.0, 1000.0))
+            .with_inner_size(egui::vec2(init_config.width, init_config.height))
             .with_always_on_top()
             .with_active();
     }
     #[cfg(target_os = "linux")]
     {
-        use x11rb::{connection::Connection, protocol::randr::ConnectionExt};
 
-        let mut width: f32 = 500.0;
-        let mut height: f32 = 1000.0;
+        let mut width: f32 = init_config.width;
+        let mut height: f32 = init_config.height;
         options.centered = true;
         options.viewport = egui::ViewportBuilder::default()
             .with_decorations(false)
             .with_transparent(true)
             .with_always_on_top()
             .with_active(true);
+        use x11rb::{connection::Connection, protocol::randr::ConnectionExt};
         if let Ok((conn, screen_num)) = x11rb::connect(None) {
             let roots = &conn.setup().roots[screen_num];
             let screen = roots;
@@ -597,18 +286,6 @@ async fn main() {
     }
     let (atx, rx) = mpsc::channel::<String>(128);
     let (tx, arx) = mpsc::channel::<ChangeInstruction>(128);
-    let mut config = Config::load(
-        std::env::current_exe()
-            .unwrap()
-            .ancestors()
-            .nth(3)
-            .unwrap()
-            .join("config.toml")
-            .to_str()
-            .unwrap()
-            .to_string(),
-    )
-    .await;
     let mut mgr = QueryManager::new(rx, tx).await;
     let app = SearchApp::new(atx, arx, &mut config);
     let a = tokio::task::spawn_blocking(|| async move {
