@@ -2,7 +2,7 @@ use std::{any::type_name, collections::HashSet};
 
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::fs::read_to_string;
-use toml::Table;
+use toml::{Table, Value};
 
 pub struct Config {
     data: Table,
@@ -29,7 +29,7 @@ impl Config {
                 Err(e) => {
                     let default=T::default();
                     if self.dont_spam_errors.insert(name.to_string()) {
-                        println!("{}\nusing default:\n[{name}]\n{}",e.message(), toml::to_string_pretty(&default).unwrap());
+                        println!("{}\nusing default:\n[{name}]\n{}",e.message(), toml::to_string(&default).unwrap());
                     }
                     default
                 }
@@ -37,7 +37,9 @@ impl Config {
         } else {
             let default=T::default();
             if self.dont_spam_errors.insert(name.to_string()) {
-                println!("# config file missing entry \"{}\", using default:\n[{name}]\n{}", name, toml::to_string_pretty(&default).unwrap());
+                let mut m=Table::new();
+                m.insert(name.to_string(), Value::try_from(&default).unwrap());
+                println!("# config file missing entry \"{name}\", using default:\n{}", toml::to_string(&Value::Table(m)).unwrap());
             }
             default
         }
