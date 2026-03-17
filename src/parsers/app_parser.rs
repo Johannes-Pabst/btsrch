@@ -1,6 +1,6 @@
 use std::{process::Command, sync::Arc};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 #[cfg(target_os = "windows")]
 use serde::Deserialize;
 #[cfg(target_os = "windows")]
@@ -69,7 +69,7 @@ pub struct AppParser {
     config: AppParserConfig,
     search_config:SearchConfig,
 }
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct AppParserConfig {
     base_priority: f32,

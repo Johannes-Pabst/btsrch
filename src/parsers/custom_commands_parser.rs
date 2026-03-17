@@ -1,7 +1,7 @@
 use std::{env, sync::Arc};
 
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, mpsc};
 
 use crate::{
@@ -14,7 +14,7 @@ pub struct CustomCommandsParser {
     config: CustomCommandsParserConfig,
     search_config:SearchConfig,
 }
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CustomCommandsParserConfig {
     base_priority: f32,

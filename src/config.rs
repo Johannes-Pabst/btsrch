@@ -1,6 +1,6 @@
 use std::{any::type_name, collections::HashSet};
 
-use serde::de::DeserializeOwned;
+use serde::{Serialize, de::DeserializeOwned};
 use tokio::fs::read_to_string;
 use toml::Table;
 
@@ -11,13 +11,13 @@ pub struct Config {
 impl Config {
     pub async fn load(path: String) -> Self {
         Config {
-            data: toml::from_str(read_to_string(path).await.unwrap().as_str()).unwrap(),
+            data: toml::from_str(read_to_string(path).await.expect("config file \"config.toml\" missing in project root!").as_str()).unwrap(),
             dont_spam_errors: HashSet::new(),
         }
     }
     pub fn get_namespace<T>(&mut self) -> T
     where
-        T: DeserializeOwned + Default,
+        T: DeserializeOwned + Serialize + Default,
     {
         let mut name = type_name::<T>().rsplit("::").next().unwrap();
         if name.ends_with("Config") {
@@ -27,17 +27,19 @@ impl Config {
             match a.clone().try_into() {
                 Ok(v) => v,
                 Err(e) => {
+                    let default=T::default();
                     if self.dont_spam_errors.insert(name.to_string()) {
-                        println!("{:?}", e);
+                        println!("{}\nusing default:\n[{name}]\n{}",e.message(), toml::to_string_pretty(&default).unwrap());
                     }
-                    T::default()
+                    default
                 }
             }
         } else {
+            let default=T::default();
             if self.dont_spam_errors.insert(name.to_string()) {
-                println!("config file missing entry \"{}\"", name);
+                println!("# config file missing entry \"{}\", using default:\n[{name}]\n{}", name, toml::to_string_pretty(&default).unwrap());
             }
-            T::default()
+            default
         }
     }
 }

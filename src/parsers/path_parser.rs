@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::query_manager::{ConfigDefault, ListEntry, QueryParser};
@@ -10,7 +10,7 @@ use crate::query_manager::{ConfigDefault, ListEntry, QueryParser};
 pub struct PathParser {
     config: PathParserConfig,
 }
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct PathParserConfig {
     base_priority: f32,

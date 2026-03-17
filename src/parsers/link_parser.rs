@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::query_manager::{ConfigDefault, ListEntry, QueryParser};
@@ -9,7 +9,7 @@ use crate::query_manager::{ConfigDefault, ListEntry, QueryParser};
 pub struct LinkParser {
     config: LinkParserConfig,
 }
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct LinkParserConfig {
     base_priority: f32,

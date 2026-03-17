@@ -1,7 +1,7 @@
 use eframe::egui::{Align, Color32, FontSelection, Label, RichText, Style, Ui, text::LayoutJob};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SearchConfig{
     priority_between_spaces:f32,

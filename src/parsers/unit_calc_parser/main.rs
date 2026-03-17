@@ -1,6 +1,6 @@
 use arboard::Clipboard;
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
 pub struct UnitCalcParser {
     config: UnitCalcParserConfig,
 }
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct UnitCalcParserConfig {
     base_priority: f32,

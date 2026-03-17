@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use base64::Engine;
 use eframe::egui::{ColorImage, Image, TextureHandle, TextureOptions, Vec2};
 use image::ImageFormat;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{RwLock, mpsc},
     time::sleep,
@@ -52,7 +52,7 @@ pub struct UnicodeParser {
     config: UnicodeParserConfig,
     search_config: SearchConfig,
 }
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct UnicodeParserConfig {
     base_priority: f32,
