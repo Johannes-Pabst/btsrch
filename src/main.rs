@@ -39,11 +39,140 @@ struct SearchApp {
 #[serde(default, deny_unknown_fields)]
 pub struct UIConfig {
     textbox_frame: FrameConfig,
+    outer_frame: FrameConfig,
+    non_selected_result_frame:FrameConfig,
+    selected_result_frame:FrameConfig,
 }
 impl Default for UIConfig {
     fn default() -> Self {
         Self {
             textbox_frame: FrameConfig {
+                inner_margin: MarginConfig {
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                },
+                fill: RgbaConfig {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 0,
+                },
+                stroke: StrokeConfig {
+                    width: 0.0,
+                    color: RgbaConfig {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 0,
+                    },
+                },
+                corner_radius: CornerRadiusConfig::One(0),
+                outer_margin: MarginConfig {
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                },
+                shadow: ShadowConfig {
+                    blur: 0,
+                    color: RgbaConfig {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 0,
+                    },
+                    offset_x: 0,
+                    offset_y: 0,
+                    spread: 0,
+                },
+            },
+            outer_frame: FrameConfig {
+                inner_margin: MarginConfig {
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                },
+                fill: RgbaConfig {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 0,
+                },
+                stroke: StrokeConfig {
+                    width: 0.0,
+                    color: RgbaConfig {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 0,
+                    },
+                },
+                corner_radius: CornerRadiusConfig::One(0),
+                outer_margin: MarginConfig {
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                },
+                shadow: ShadowConfig {
+                    blur: 0,
+                    color: RgbaConfig {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 0,
+                    },
+                    offset_x: 0,
+                    offset_y: 0,
+                    spread: 0,
+                },
+            },
+            non_selected_result_frame: FrameConfig {
+                inner_margin: MarginConfig {
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                },
+                fill: RgbaConfig {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 0,
+                },
+                stroke: StrokeConfig {
+                    width: 0.0,
+                    color: RgbaConfig {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 0,
+                    },
+                },
+                corner_radius: CornerRadiusConfig::One(0),
+                outer_margin: MarginConfig {
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                },
+                shadow: ShadowConfig {
+                    blur: 0,
+                    color: RgbaConfig {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 0,
+                    },
+                    offset_x: 0,
+                    offset_y: 0,
+                    spread: 0,
+                },
+            },
+            selected_result_frame: FrameConfig {
                 inner_margin: MarginConfig {
                     left: 0,
                     right: 0,
@@ -271,7 +400,7 @@ impl eframe::App for SearchApp {
         image_extras::register();
         egui_extras::install_image_loaders(ctx);
         CentralPanel::default()
-            .frame(egui::Frame::NONE)
+            .frame(self.config.outer_frame.clone().into())
             .show(ctx, |ui| {
                 if ctx.input(|i| i.key_pressed(Key::Escape)) {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -364,32 +493,12 @@ impl eframe::App for SearchApp {
                             }
                             for i in 0..self.layout.len() {
                                 let l = &mut self.layout[i];
-                                let mut brightness = 10;
-                                if l.execute.is_some() {
-                                    brightness = 20;
-                                    if i == self.selected_id {
-                                        brightness = 50;
-                                    }
-                                }
-                                let frame = Frame::NONE
-                                    .fill(egui::Color32::from_rgba_unmultiplied(
-                                        brightness + 30,
-                                        brightness,
-                                        brightness,
-                                        200,
-                                    ))
-                                    .corner_radius(10)
-                                    .outer_margin(5)
-                                    .inner_margin(5)
-                                    .shadow(Shadow {
-                                        offset: [0, 0],
-                                        blur: 0,
-                                        spread: 2,
-                                        color: egui::Color32::from_rgba_unmultiplied(
-                                            0, 255, 255, 128,
-                                        ),
-                                    })
-                                    .show(ui, |ui| {
+                                let frame:Frame=if i==self.selected_id{
+                                    self.config.selected_result_frame.clone()
+                                }else{
+                                    self.config.non_selected_result_frame.clone()
+                                }.into();
+                                let frame=frame.show(ui, |ui| {
                                         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                                             (l.layout_fn)(ui);
                                         });
