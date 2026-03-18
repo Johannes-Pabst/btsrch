@@ -5,6 +5,7 @@ pub mod parsers;
 pub mod query_manager;
 pub mod search_helper;
 pub mod ui_config;
+pub mod os_utils;
 
 use std::sync::Arc;
 
