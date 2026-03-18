@@ -206,12 +206,16 @@ impl eframe::App for SearchApp {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct InitConfig{
-    width:f32,
-    height:f32,
+    fallback_width:f32,
+    fallback_height:f32,
+    percent_with:f32,
+    percent_height:f32,
+    prefer_percent_width:bool,
+    prefer_percent_height:bool,
 }
 impl Default for InitConfig{
     fn default() -> Self {
-        Self { width: 500.0, height: 1000.0 }
+        Self { fallback_width: 500.0, fallback_height: 1000.0, percent_with:30.0,percent_height:80.0,prefer_percent_width:true, prefer_percent_height:true }
     }
 }
 #[tokio::main(flavor = "multi_thread")]
@@ -248,9 +252,8 @@ async fn main() {
     }
     #[cfg(target_os = "linux")]
     {
-
-        let mut width: f32 = init_config.width;
-        let mut height: f32 = init_config.height;
+        let mut width: f32 = init_config.fallback_width;
+        let mut height: f32 = init_config.fallback_height;
         options.centered = true;
         options.viewport = egui::ViewportBuilder::default()
             .with_decorations(false)
@@ -274,8 +277,12 @@ async fn main() {
                     .unwrap()
                     .reply()
                     .unwrap();
-                width = primary_info.width as f32 * 0.3;
-                height = primary_info.height as f32 * 0.8;
+                if init_config.prefer_percent_width{
+                    width = primary_info.width as f32 * init_config.percent_with / 100.0;
+                }
+                if init_config.prefer_percent_height{
+                    height = primary_info.height as f32 * init_config.percent_height / 100.0;
+                }
                 let x = primary_info.x + ((primary_info.width / 2) as i16) - (width as i16) / 2;
                 let y = primary_info.y + ((primary_info.height / 2) as i16) - (height as i16) / 2;
                 options.viewport = options.viewport.with_position((x as f32, y as f32));
