@@ -194,10 +194,10 @@ pub struct RgbaConfig {
 impl Default for RgbaConfig {
     fn default() -> Self {
         Self {
-            r: 255,
+            r: 0,
             g: 0,
             b: 0,
-            a: 255,
+            a: 0,
         }
     }
 }
