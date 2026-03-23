@@ -368,19 +368,18 @@ impl QueryParser for AppParser {
                         {
                             let app_id = format!("shell:AppsFolder\\{}", s3.app_i_d);
                             Command::new("explorer").arg(app_id).spawn().unwrap();
+                            std::process::exit(0);
                         }
                         #[cfg(target_os = "linux")]
                         {
                             if s3.terminal {
-                                let st = format!("\"$TERMINAL\" -e sh -c \"{}\"", s3.exec);
-                                let mut args = vec!["-c", st.as_str()];
-                                let _ = Command::new("sh")
-                                    .args(&mut args)
-                                    .stdin(std::process::Stdio::null())
-                                    .stdout(std::process::Stdio::null())
-                                    .stderr(std::process::Stdio::null())
-                                    .spawn()
-                                    .unwrap();
+                                use crate::os_utils::run_in_terminal;
+
+                                let exec=s3.exec.clone();
+                                tokio::spawn(async move {
+                                    run_in_terminal(exec).await;
+                                    std::process::exit(0);
+                                });
                             } else {
                                 let mut args = s3
                                     .exec
@@ -394,9 +393,9 @@ impl QueryParser for AppParser {
                                     .stderr(std::process::Stdio::null())
                                     .spawn()
                                     .unwrap();
+                                std::process::exit(0);
                             }
                         }
-                        std::process::exit(0);
                     })),
                     priority:priority+self.config.base_priority,
                 })
