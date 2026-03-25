@@ -18,7 +18,7 @@ pub struct CommandParserConfig {
 impl Default for CommandParserConfig {
     fn default() -> Self {
         Self {
-            base_priority: 101.0,
+            base_priority: 99.0,
         }
     }
 }
@@ -34,21 +34,19 @@ impl QueryParser for CommandParser {
     async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
         #[cfg(target_os = "linux")]
         {
-            use std::process::Stdio;
+            use crate::os_utils::exists_command;
 
-            let mut t=String::from_utf8(Command::new("bash").arg("-c").arg(format!("compgen -c {}", query)).stdout(Stdio::piped()).spawn().unwrap().wait_with_output().await.unwrap().stdout).unwrap().lines().map(|s| s.to_string()).collect::<Vec<String>>();
-            t.dedup();
-            for s in t{
-                let s_clone=s.clone();
+            if exists_command(&query).await{
+                let s_clone=query.clone();
                 resopnse
                     .send(ListEntry {
                         layout_fn: Box::new(move |ui| {
-                            ui.label(format!("run {} in terminal", &s));
+                            ui.label(format!("run {} in terminal", &query));
                         }),
                         execute: Some(Box::new(move || {
                             let s_c_c=s_clone.clone();
                             tokio::spawn(async move {
-                                run_in_terminal(s_c_c.clone()).await;
+                                run_in_terminal(format!("bash -c \"{}; exec bash\"",&s_c_c), true).await;
                                 std::process::exit(0);
                             });
                         })),

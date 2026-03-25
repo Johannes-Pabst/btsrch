@@ -377,7 +377,7 @@ impl QueryParser for AppParser {
 
                                 let exec=s3.exec.clone();
                                 tokio::spawn(async move {
-                                    run_in_terminal(exec).await;
+                                    run_in_terminal(exec, false).await;
                                     std::process::exit(0);
                                 });
                             } else {
