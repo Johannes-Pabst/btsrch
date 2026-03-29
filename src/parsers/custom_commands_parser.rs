@@ -21,7 +21,7 @@ pub struct CustomCommandsParserConfig {
 }
 impl Default for CustomCommandsParserConfig {
     fn default() -> Self {
-        Self { base_priority: 70.0 }
+        Self { base_priority: 60.0 }
     }
 }
 #[derive(Clone)]

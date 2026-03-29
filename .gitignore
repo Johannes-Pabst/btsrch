@@ -1,5 +1,5 @@
 /target
 /scripts/*
 /script_dependencies
-btsrch_cache
-config.toml
+/btsrch_cache
+/config.toml

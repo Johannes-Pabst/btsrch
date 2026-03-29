@@ -1,0 +1,203 @@
+[CustomCommandsParser]
+base_priority = 60.0
+
+[CommandParser]
+base_priority = 70.0
+
+[Search]
+priority_between_spaces = 25.0
+priority_after_space = 15.0
+priority_anywhere_whole = 0.0
+
+[LinkParser]
+base_priority = 101.0
+
+[PathParser]
+base_priority = 100.0
+
+[UnitCalcParser]
+base_priority = 10.0
+error_priority = -100.0
+
+[AppParser]
+base_priority = 50.0
+
+[UnicodeParser]
+base_priority = 20.0
+
+[UI.textbox_frame]
+corner_radius = 15
+
+[UI.textbox_frame.inner_margin]
+left = 3
+right = 3
+top = 3
+bottom = 3
+
+[UI.textbox_frame.fill]
+r = 65
+g = 0
+b = 0
+a = 150
+
+[UI.textbox_frame.stroke]
+width = 2.0
+
+[UI.textbox_frame.stroke.color]
+r = 0
+g = 255
+b = 255
+a = 255
+
+[UI.textbox_frame.outer_margin]
+left = 16
+right = 16
+top = 16
+bottom = 0
+
+[UI.textbox_frame.shadow]
+offset_x = 0
+offset_y = 0
+blur = 20
+spread = 10
+
+[UI.textbox_frame.shadow.color]
+r = 0
+g = 255
+b = 255
+a = 100
+
+[UI.outer_frame]
+corner_radius = 0
+
+[UI.outer_frame.inner_margin]
+left = 0
+right = 0
+top = 0
+bottom = 0
+
+[UI.outer_frame.fill]
+r = 0
+g = 0
+b = 0
+a = 0
+
+[UI.outer_frame.stroke]
+width = 0.0
+
+[UI.outer_frame.stroke.color]
+r = 0
+g = 0
+b = 0
+a = 0
+
+[UI.outer_frame.outer_margin]
+left = 0
+right = 0
+top = 0
+bottom = 0
+
+[UI.outer_frame.shadow]
+offset_x = 0
+offset_y = 0
+blur = 0
+spread = 0
+
+[UI.outer_frame.shadow.color]
+r = 0
+g = 0
+b = 0
+a = 0
+
+[UI.non_selected_result_frame]
+corner_radius = 10
+
+[UI.non_selected_result_frame.inner_margin]
+left = 3
+right = 3
+top = 2
+bottom = 2
+
+[UI.non_selected_result_frame.fill]
+r = 0
+g = 0
+b = 0
+a = 100
+
+[UI.non_selected_result_frame.stroke]
+width = 2.0
+
+[UI.non_selected_result_frame.stroke.color]
+r = 100
+g = 100
+b = 100
+a = 255
+
+[UI.non_selected_result_frame.outer_margin]
+left = 10
+right = 10
+top = 0
+bottom = 0
+
+[UI.non_selected_result_frame.shadow]
+offset_x = 0
+offset_y = 0
+blur = 0
+spread = 0
+
+[UI.non_selected_result_frame.shadow.color]
+r = 0
+g = 0
+b = 0
+a = 0
+
+[UI.selected_result_frame]
+corner_radius = 10
+
+[UI.selected_result_frame.inner_margin]
+left = 3
+right = 3
+top = 2
+bottom = 2
+
+[UI.selected_result_frame.fill]
+r = 0
+g = 0
+b = 0
+a = 100
+
+[UI.selected_result_frame.stroke]
+width = 2.0
+
+[UI.selected_result_frame.stroke.color]
+r = 0
+g = 255
+b = 255
+a = 255
+
+[UI.selected_result_frame.outer_margin]
+left = 10
+right = 10
+top = 0
+bottom = 0
+
+[UI.selected_result_frame.shadow]
+offset_x = 0
+offset_y = 0
+blur = 10
+spread = 5
+
+[UI.selected_result_frame.shadow.color]
+r = 0
+g = 255
+b = 255
+a = 100
+
+
+[Init]
+fallback_width = 500.0
+fallback_height = 1000.0
+percent_with = 30.0
+percent_height = 80.0
+prefer_percent_width = true
+prefer_percent_height = true

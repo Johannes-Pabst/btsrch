@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tokio::{process::Command, sync::mpsc};
+use tokio::sync::mpsc;
 
 #[cfg(target_os = "linux")]
 use crate::os_utils::run_in_terminal;
@@ -18,7 +18,7 @@ pub struct CommandParserConfig {
 impl Default for CommandParserConfig {
     fn default() -> Self {
         Self {
-            base_priority: 99.0,
+            base_priority: 70.0,
         }
     }
 }
