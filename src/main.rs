@@ -1,11 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod config;
+pub mod os_utils;
 pub mod parsers;
 pub mod query_manager;
 pub mod search_helper;
 pub mod ui_config;
-pub mod os_utils;
 
 use std::sync::Arc;
 
@@ -207,17 +207,24 @@ impl eframe::App for SearchApp {
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct InitConfig{
-    fallback_width:f32,
-    fallback_height:f32,
-    percent_with:f32,
-    percent_height:f32,
-    prefer_percent_width:bool,
-    prefer_percent_height:bool,
+pub struct InitConfig {
+    fallback_width: f32,
+    fallback_height: f32,
+    percent_with: f32,
+    percent_height: f32,
+    prefer_percent_width: bool,
+    prefer_percent_height: bool,
 }
-impl Default for InitConfig{
+impl Default for InitConfig {
     fn default() -> Self {
-        Self { fallback_width: 500.0, fallback_height: 1000.0, percent_with:30.0,percent_height:80.0,prefer_percent_width:true, prefer_percent_height:true }
+        Self {
+            fallback_width: 500.0,
+            fallback_height: 1000.0,
+            percent_with: 30.0,
+            percent_height: 80.0,
+            prefer_percent_width: true,
+            prefer_percent_height: true,
+        }
     }
 }
 #[tokio::main(flavor = "multi_thread")]
@@ -241,7 +248,7 @@ async fn main() {
             .to_string(),
     )
     .await;
-    let init_config:InitConfig=config.get_namespace();
+    let init_config: InitConfig = config.get_namespace();
     #[cfg(target_os = "windows")]
     {
         options.centered = true;
@@ -279,10 +286,10 @@ async fn main() {
                     .unwrap()
                     .reply()
                     .unwrap();
-                if init_config.prefer_percent_width{
+                if init_config.prefer_percent_width {
                     width = primary_info.width as f32 * init_config.percent_with / 100.0;
                 }
-                if init_config.prefer_percent_height{
+                if init_config.prefer_percent_height {
                     height = primary_info.height as f32 * init_config.percent_height / 100.0;
                 }
                 let x = primary_info.x + ((primary_info.width / 2) as i16) - (width as i16) / 2;

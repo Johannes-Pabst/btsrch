@@ -71,11 +71,19 @@ pub async fn try_exec(command: &String, mut terminal: String, keep_open: bool) -
 pub async fn exists_command(command: &String) -> bool {
     Command::new("bash")
         .arg("-c")
-        .arg(format!("command -pv {}", command))
+        .arg(format!("command -pv \"{}\"", command))
         .spawn()
         .unwrap()
         .wait()
         .await
         .unwrap()
         .success()
+    // Command::new("which")
+    //     .arg(command.split_whitespace().next().unwrap_or(""))
+    //     .spawn()
+    //     .unwrap()
+    //     .wait()
+    //     .await
+    //     .unwrap()
+    //     .success()
 }
