@@ -18,6 +18,7 @@ use tokio::sync::mpsc;
 
 use crate::config::Config;
 use crate::parsers::app_parser::AppParser;
+use crate::parsers::cliphist_parser::ClipboardParser;
 use crate::parsers::command_parser::CommandParser;
 use crate::parsers::custom_commands_parser::CustomCommandsParser;
 use crate::parsers::link_parser::LinkParser;
@@ -312,6 +313,7 @@ async fn main() {
         mgr.add_query_parser_config::<AppParser>(&mut config);
         mgr.add_query_parser_config::<UnicodeParser>(&mut config);
         mgr.add_query_parser_config::<CommandParser>(&mut config);
+        mgr.add_query_parser_config::<ClipboardParser>(&mut config);
         mgr.start().await.unwrap();
     });
     tokio::spawn(async move {

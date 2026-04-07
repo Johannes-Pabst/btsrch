@@ -25,6 +25,10 @@ base_priority = 50.0
 [UnicodeParser]
 base_priority = 20.0
 
+[ClipboardParser]
+base_priority = 70.0
+max_searchable_len = 1000
+
 [UI.textbox_frame]
 corner_radius = 15
 
