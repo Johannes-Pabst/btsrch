@@ -21,13 +21,15 @@ pub struct ClipboardParser {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct ClipboardParserConfig {
-    base_priority: f32,
+    new_priority: f32,
+    old_priority: f32,
     max_searchable_len: u64,
 }
 impl Default for ClipboardParserConfig {
     fn default() -> Self {
         Self {
-            base_priority: 70.0,
+            new_priority: 45.0,
+            old_priority: 45.0,
             max_searchable_len: 1000,
         }
     }
@@ -62,7 +64,7 @@ impl QueryParser for ClipboardParser {
                 data = self.data.read().await.clone();
             }
             let data = data.unwrap();
-            let data_searchable = data.iter().map(|x| x.preview.clone()).collect();
+            let data_searchable = data.iter().enumerate().map(|(i, x)| format!("📋{}: {}", i, x.preview.clone())).collect();
             for (add_priority, i, mark) in search(&query, &data_searchable, &self.search_config) {
                 let value = data_searchable[i].clone();
                 let data_clone = data[i].clone();
@@ -97,7 +99,7 @@ impl QueryParser for ClipboardParser {
                                 .await.unwrap().await;
                             });
                         })),
-                        priority: self.config.base_priority + add_priority,
+                        priority: self.config.new_priority+(self.config.old_priority-self.config.new_priority)*i as f32/(data.len()-1) as f32 + add_priority,
                     })
                     .await
                     .ok()?;
