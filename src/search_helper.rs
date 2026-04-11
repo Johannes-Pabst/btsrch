@@ -23,11 +23,11 @@ pub fn search(query: &String, list: &Vec<String>, config:&SearchConfig) -> Vec<(
         .clone()
         .into_iter()
         .filter_map(|i| {
-            list[i].to_lowercase().find(&lower_case).map(|h| {
+            list[i].to_lowercase().find(&lower_case).map(|h| {// id of start of query in lower case list entry
                 let (_, lookup) = to_lowercase_lookup(&list[i]);
-                let h2 = lookup[h];
-                let h3 = lookup[h + lower_case.len()];
-                (config.priority_anywhere_whole, i, vec![h2, h3])
+                let h2 = lookup.iter().position(|x| x==&h).unwrap_or_else(|| panic!("{h}={}", list[i]));
+                let h3 = lookup.iter().position(|x| x==&(h + lower_case.len())).unwrap_or_else(|| panic!("{h}={}", list[i]));
+                (config.priority_anywhere_whole, i, vec![h2, h3])// id of start/end of query in uppercase list entry
             })
         })
         .collect::<Vec<(f32, usize, Vec<usize>)>>();

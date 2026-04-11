@@ -64,7 +64,11 @@ impl QueryParser for ClipboardParser {
                 data = self.data.read().await.clone();
             }
             let data = data.unwrap();
-            let data_searchable = data.iter().enumerate().map(|(i, x)| format!("📋{}: {}", i, x.preview.clone())).collect();
+            let data_searchable = data
+                .iter()
+                .enumerate()
+                .map(|(i, x)| format!("📋{}: {}", i, x.preview.clone()))
+                .collect();
             for (add_priority, i, mark) in search(&query, &data_searchable, &self.search_config) {
                 let value = data_searchable[i].clone();
                 let data_clone = data[i].clone();
@@ -96,10 +100,15 @@ impl QueryParser for ClipboardParser {
                                     wl_copy.wait().unwrap();
                                     std::process::exit(0);
                                 })
-                                .await.unwrap().await;
+                                .await
+                                .unwrap()
+                                .await;
                             });
                         })),
-                        priority: self.config.new_priority+(self.config.old_priority-self.config.new_priority)*i as f32/(data.len()-1) as f32 + add_priority,
+                        priority: self.config.new_priority
+                            + (self.config.old_priority - self.config.new_priority) * i as f32
+                                / (data.len() - 1) as f32
+                            + add_priority,
                     })
                     .await
                     .ok()?;
@@ -143,10 +152,8 @@ pub async fn cliphist_parsed(preview_width: u64) -> Result<Vec<ClipboardEntry>, 
     let short = cliphist_split(0).await?;
     Ok(long
         .drain(..)
-        .map(|x| ClipboardEntry {
-            id: x.0,
-            preview: x.1,
-            image: short
+        .map(|x| {
+            let image = short
                 .binary_search_by_key(&(u64::MAX - x.0), |y| u64::MAX - y.0)
                 .map(|id| {
                     let s = &short[id];
@@ -175,7 +182,14 @@ pub async fn cliphist_parsed(preview_width: u64) -> Result<Vec<ClipboardEntry>, 
                     })
                 })
                 .ok()
-                .flatten(),
+                .flatten();
+            ClipboardEntry {
+                id: x.0,
+                preview: x.1,
+                decode_priority: (image.is_some() as u8 as f32) * 10.0,
+                decoded: Arc::new(RwLock::new(None)),
+                image,
+            }
         })
         .collect::<Vec<_>>())
 }
@@ -185,6 +199,14 @@ pub struct ClipboardEntry {
     pub id: u64,
     pub preview: String,
     pub image: Option<ClipboardImageData>,
+    pub decode_priority: f32,
+    pub decoded: Arc<RwLock<Option<DecodeExtraData>>>,
+}
+#[cfg(target_os = "linux")]
+pub struct DecodeExtraData {
+    pub raw: Option<Vec<u8>>,
+    pub raw_string: Option<String>,
+    pub cached_image_preview_path: Option<String>,
 }
 #[cfg(target_os = "linux")]
 #[derive(Clone)]
