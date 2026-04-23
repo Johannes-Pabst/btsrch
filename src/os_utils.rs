@@ -42,14 +42,14 @@ pub async fn run_in_terminal(command: String, keep_open: bool) -> Option<()> {
     Some(())
 }
 pub async fn try_exec(command: &String, mut terminal: String, keep_open: bool) -> Option<()> {
-    if !exists_command(&terminal).await{
-        return Some(())
-    }
+    // if !exists_command(&terminal).await{
+    //     return Some(())
+    // }
     terminal = terminal.trim().to_string();
     if terminal.starts_with("'") && terminal.ends_with("'") {
         terminal = terminal[1..terminal.len() - 1].to_string();
     }
-    println!("{command} {:?}", terminal);
+    println!("trying to execute {} in {}", command, terminal);
     let spawn = if keep_open {
         Command::new(terminal)
             .arg("--")
