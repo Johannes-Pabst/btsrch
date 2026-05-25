@@ -58,12 +58,11 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
                 let unit_number = format!(
                     "{:.5}",
                     UnitCalculation::Div(
-                        Box::new(UnitCalculation::Number(un.clone())),
+                        Box::new(UnitCalculation::Value(un.clone())),
                         Box::new(UnitCalculation::Number(nun.clone()))
                     )
                     .execute()
-                    .unwrap()
-                    .num
+                    .unwrap().to_string()
                 )
                 .trim_end_matches('0')
                 .trim_end_matches('.')
@@ -90,18 +89,17 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
     }
     if let Some(u) = u {
         let unum=UnitCalculation::Div(
-                Box::new(UnitCalculation::Number(un.clone())),
+                Box::new(UnitCalculation::Value(un.clone())),
                 Box::new(UnitCalculation::Number(u.si.pow_i64(exponent).clone()))
             )
             .execute()
             .unwrap();
-        if unum.units.len()>0{
+        if unum.flatten().iter().any(|x| x.units.len()>0){
             return Err("incompatible target unit".to_string());
         }
         let unit_number = format!(
             "{:.5}",
-            unum
-            .num
+            unum.to_string()
         )
         .trim_end_matches('0')
         .trim_end_matches('.')
@@ -122,18 +120,17 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
         }
     }else if let Some(tu)=tu{
         let unum=UnitCalculation::Div(
-                Box::new(UnitCalculation::Number(un.clone())),
+                Box::new(UnitCalculation::Value(un.clone())),
                 Box::new(UnitCalculation::Number(tu.0.clone()))
             )
             .execute()
             .unwrap();
-        if unum.units.len()>0{
+        if unum.flatten().iter().any(|x| x.units.len()>0){
             return Err("incompatible target unit".to_string());
         }
         let unit_number = format!(
             "{:.5}",
-            unum
-            .num
+            unum.to_string()
         )
         .trim_end_matches('0')
         .trim_end_matches('.')

@@ -21,7 +21,9 @@ pub enum Token {
     CloseBracket,
     Convert,
     Dot,
+    Comma,
     Unit(UnitNumber, Option<Unit>),
+    FunctionName(String),
 }
 impl ToString for Token {
     fn to_string(&self) -> String {
@@ -29,6 +31,7 @@ impl ToString for Token {
             Token::Number(s) => format!("{s}").to_string(),
             Token::Unit(s, _) => s.to_string(),
             Token::StringLiteral(s) => format!("\"{s}\""),
+            Token::FunctionName(s) => format!("fn \"{s}\""),
             Token::Plus => "+".to_string(),
             Token::Minus => "-".to_string(),
             Token::Mult => "*".to_string(),
@@ -44,6 +47,7 @@ impl ToString for Token {
             Token::CloseBracket => ")".to_string(),
             Token::Convert => "in".to_string(),
             Token::Dot => ".".to_string(),
+            Token::Comma => ",".to_string(),
         }
     }
 }
@@ -71,28 +75,41 @@ pub fn lex(input: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
     Some(output)
 }
 pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
-    let atomic = vec![
-        ("+", vec![Token::Plus]),
-        ("-", vec![Token::Minus]),
-        ("*", vec![Token::Mult]),
-        ("/", vec![Token::Div]),
-        ("^", vec![Token::Power]),
-        ("<=", vec![Token::LowerEq]),
-        ("<", vec![Token::Lower]),
-        (">=", vec![Token::HigherEq]),
-        (">", vec![Token::Higher]),
-        ("==", vec![Token::Eq]),
-        ("!=", vec![Token::NEq]),
-        ("(", vec![Token::OpenBracket]),
-        (")", vec![Token::CloseBracket]),
-        ("as", vec![Token::Convert]),
-        ("=>", vec![Token::Convert]),
-        ("->", vec![Token::Convert]),
-        ("to", vec![Token::Convert]),
-        (".", vec![Token::Dot]),
-        ("²", vec![Token::Power, Token::Number("2".to_string())]),
-        ("³", vec![Token::Power, Token::Number("3".to_string())]),
+    let mut atomic = vec![
+        ("+".to_string(), vec![Token::Plus]),
+        ("-".to_string(), vec![Token::Minus]),
+        ("*".to_string(), vec![Token::Mult]),
+        ("/".to_string(), vec![Token::Div]),
+        ("^".to_string(), vec![Token::Power]),
+        ("<=".to_string(), vec![Token::LowerEq]),
+        ("<".to_string(), vec![Token::Lower]),
+        (">=".to_string(), vec![Token::HigherEq]),
+        (">".to_string(), vec![Token::Higher]),
+        ("==".to_string(), vec![Token::Eq]),
+        ("!=".to_string(), vec![Token::NEq]),
+        ("(".to_string(), vec![Token::OpenBracket]),
+        (")".to_string(), vec![Token::CloseBracket]),
+        ("as".to_string(), vec![Token::Convert]),
+        ("=>".to_string(), vec![Token::Convert]),
+        ("->".to_string(), vec![Token::Convert]),
+        ("to".to_string(), vec![Token::Convert]),
+        (".".to_string(), vec![Token::Dot]),
+        (",".to_string(), vec![Token::Comma]),
+        (
+            "²".to_string(),
+            vec![Token::Power, Token::Number("2".to_string())],
+        ),
+        (
+            "³".to_string(),
+            vec![Token::Power, Token::Number("3".to_string())],
+        ),
     ];
+    atomic.extend(
+        get_function_names()
+            .drain(..)
+            .map(|name| (name.clone(), vec![Token::FunctionName(name)]))
+            .collect::<Vec<(String, Vec<Token>)>>(),
+    );
     if let Some(t) = atomic.iter().find(|a| a.0 == s) {
         return Some(t.1.iter().cloned().collect());
     }
@@ -116,6 +133,9 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         }
     }
     None
+}
+pub fn get_function_names() -> Vec<String> {
+    vec!["sqrt".to_string()]
 }
 pub fn get_units() -> Vec<Unit> {
     let mut v = vec![];
@@ -763,30 +783,29 @@ pub fn get_units() -> Vec<Unit> {
     ]);
 
     v.extend(vec![
-    Unit {
-        name: "mile per hour".to_string(),
-        plural: "miles per hour".to_string(),
-        abbreviation: "mph".to_string(),
-        valid_names: Vec::new(),
-        si: UnitNumber {
-            num: 1609.344 / 3600.0, // 1 mph in m/s
-            units: vec![
-                UnitExp {
-                    unit: MetricBaseUnit::Meter,
-                    exp: 1,
-                },
-                UnitExp {
-                    unit: MetricBaseUnit::Second,
-                    exp: -1,
-                },
-            ],
+        Unit {
+            name: "mile per hour".to_string(),
+            plural: "miles per hour".to_string(),
+            abbreviation: "mph".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1609.344 / 3600.0, // 1 mph in m/s
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -1,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
         }
-        .cleaned(),
-        priority: 0.0,
-    }
-    .create()
-]);
-
+        .create(),
+    ]);
 
     v.extend(
         Unit {

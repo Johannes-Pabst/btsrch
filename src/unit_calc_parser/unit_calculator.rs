@@ -55,6 +55,17 @@ impl UnitNumber {
         }
         None
     }
+    pub fn pow_one_over_i(&self, exp:i64)->Result<Self, String>{
+        let errors=self.units.iter().filter(|u| u.exp%exp!=0).collect::<Vec<_>>();
+        if errors.is_empty(){
+            Ok(UnitNumber{
+                num: self.num.powf(1.0/exp as f64),
+                units: self.units.iter().map(|u| UnitExp{exp:u.exp/exp, unit:u.unit.clone()}).collect()
+            })
+        }else{
+            Err(format!("cant take {}th root of: ",errors.iter().map(|e| format!("{}", e.to_string())).collect::<Vec<_>>().join(", ")))
+        }
+    }
 }
 impl Add for UnitNumber {
     type Output = Result<Self, String>;
