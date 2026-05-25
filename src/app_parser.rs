@@ -209,8 +209,8 @@ impl QueryParser for AppParser {
                         }
                         #[cfg(target_os = "linux")]
                         {
-                            let mut args=s3.exec.split(' ').filter(|s| !vec!["%F", "%U"].contains(s)).collect::<Vec<&str>>();
-                            let _ = Command::new(args[0])
+                            let mut args=s3.exec.split(' ').filter(|s| !vec!["%F", "%U"].contains(s)).map(|s| s.replace("%f", "")).collect::<Vec<String>>();
+                            let _ = Command::new(args[0].as_str())
                                 .args(&mut args[1..])
                                 .stdin(std::process::Stdio::null())
                                 .stdout(std::process::Stdio::null())
