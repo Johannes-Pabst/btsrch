@@ -1,32 +1,43 @@
 use arboard::Clipboard;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::{
-    query_manager::{ListEntry, QueryParser},
-    unit_calc_parser::{
+    parsers::unit_calc_parser::{
         lexer::{get_units, lex},
         parser::{UnitCalculation, parse_unit_conversion},
         unit_number_parser::superscript,
     },
+    query_manager::{ConfigDefault, ListEntry, QueryParser},
 };
 
 #[derive(Clone)]
-pub struct UnitCalcParser {}
-impl Default for UnitCalcParser {
+pub struct UnitCalcParser {
+    config: UnitCalcParserConfig,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct UnitCalcParserConfig {
+    base_priority: f32,
+    error_priority: f32,
+}
+impl Default for UnitCalcParserConfig {
     fn default() -> Self {
-        Self {}
+        Self { base_priority: 10.0, error_priority:-100.0 }
+    }
+}
+impl ConfigDefault for UnitCalcParser {
+    fn create(config:&mut crate::config::Config)->Self {
+        Self { config: config.get_namespace() }
     }
 }
 #[async_trait]
 impl QueryParser for UnitCalcParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()> {
-        let len = query.len();
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
         let (text, priority) = match execute_unit_str(query) {
-            Ok(v) => {
-                (v, (len as f32))
-            },
-            Err(e) => (format!("error: {e}"),-1.0),
+            Ok(v) => (v,self.config.base_priority),
+            Err(e) => (e,self.config.error_priority),
         };
         let text2 = text.clone();
         resopnse
@@ -39,7 +50,8 @@ impl QueryParser for UnitCalcParser {
                 })),
                 priority: priority,
             })
-            .await.ok()?;
+            .await
+            .ok()?;
         None
     }
 }
@@ -49,7 +61,7 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
     let ast = parse_unit_conversion(tokens)?;
     let (un, mut u, tu) = ast.execute()?;
     let mut exponent = 1;
-    if u.is_none()&&tu.is_none() {
+    if u.is_none() && tu.is_none() {
         let mut best_score = f64::NEG_INFINITY;
         for unit in units {
             let cleaned = unit.si.cleaned();

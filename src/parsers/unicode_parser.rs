@@ -1,17 +1,19 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use base64::Engine;
-use egui::{
-    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle, TextureOptions, Ui, Vec2, text::LayoutJob
-};
+use eframe::egui::{ColorImage, Image, TextureHandle, TextureOptions, Vec2};
 use image::ImageFormat;
-use serde::Deserialize;
-use tokio::sync::{RwLock, mpsc};
+use serde::{Deserialize, Serialize};
+use tokio::{
+    sync::{RwLock, mpsc},
+    time::sleep,
+};
 
 use crate::{
-    query_manager::{ListEntry, QueryParser},
-    search_helper::search,
+    config::Config,
+    query_manager::{ConfigDefault, ListEntry, QueryParser},
+    search_helper::{SearchConfig, mark_text, search},
 };
 
 #[derive(Clone, Deserialize)]
@@ -47,13 +49,25 @@ fn decode_base64_image(data_uri: &str) -> Option<ColorImage> {
 #[derive(Clone)]
 pub struct UnicodeParser {
     unicode: Arc<RwLock<Vec<UnicodeChar>>>,
+    config: UnicodeParserConfig,
+    search_config: SearchConfig,
 }
-impl Default for UnicodeParser {
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct UnicodeParserConfig {
+    base_priority: f32,
+}
+impl Default for UnicodeParserConfig {
     fn default() -> Self {
+        Self { base_priority: 20.0 }
+    }
+}
+impl ConfigDefault for UnicodeParser {
+    fn create(config: &mut Config) -> Self {
         let unicode_list = Arc::new(RwLock::new(Vec::new()));
         let unicode_list_clone = unicode_list.clone();
         tokio::spawn(async move {
-            let filee = include_str!("../list.with.images.with.modifiers.json");
+            let filee = include_str!("../../list.with.images.with.modifiers.json");
             let emojis_raw: EmojiList = serde_json::from_str(&filee).unwrap();
             let emojis = emojis_raw
                 .emojis
@@ -67,7 +81,7 @@ impl Default for UnicodeParser {
                     )))),
                 })
                 .collect::<Vec<UnicodeChar>>();
-            let fileu = include_str!("../UnicodeData.txt");
+            let fileu = include_str!("../../UnicodeData.txt");
             let mut chars = fileu
                 .lines()
                 .filter(|l| l.len() > 0)
@@ -79,7 +93,13 @@ impl Default for UnicodeParser {
                     )
                     .map(|c| c.to_string())
                     .unwrap_or(String::new());
-                    let name = semicolon_seperated.remove(1);
+                    let other_name = semicolon_seperated.remove(10);
+                    let first_name = semicolon_seperated.remove(1);
+                    let name = if other_name.len() > 0 {
+                        format!("{first_name} {other_name}")
+                    } else {
+                        first_name
+                    };
                     UnicodeChar {
                         name: name.to_lowercase(),
                         key: character,
@@ -94,6 +114,8 @@ impl Default for UnicodeParser {
         });
         Self {
             unicode: unicode_list,
+            config: config.get_namespace(),
+            search_config: config.get_namespace(),
         }
     }
 }
@@ -108,12 +130,11 @@ impl QueryParser for UnicodeParser {
         }
         let texts = characters
             .iter()
-            .map(|c| (format!("{} {}", &c.key, &c.name), c))
-            .collect::<Vec<(String, &UnicodeChar)>>();
-        let mut found = search(&query, texts);
-        for (id, mark) in found.drain(..) {
+            .map(|c| format!("{} {}", &c.key, &c.name))
+            .collect::<Vec<_>>();
+        let mut found = search(&query, &texts, &self.search_config);
+        for (priority, id, mark) in found.drain(..) {
             let s = &characters[id];
-            let priority = 1.0;
             let s2 = s.clone();
             let s3 = s.clone();
             resopnse
@@ -144,48 +165,19 @@ impl QueryParser for UnicodeParser {
                         mark_text(s, &mark, &mut ui);
                     }),
                     execute: Some(Box::new(move || {
-                        let mut clipboard = arboard::Clipboard::new().unwrap();
-                        clipboard.set_text(s3.key.clone()).unwrap();
-                        std::process::exit(0);
+                        let key = s3.key.clone();
+                        tokio::spawn(async {
+                            let mut clipboard = arboard::Clipboard::new().unwrap();
+                            clipboard.set_text(key).unwrap();
+                            sleep(Duration::from_millis(10)).await;
+                            std::process::exit(0);
+                        });
                     })),
-                    priority,
+                    priority: priority + self.config.base_priority,
                 })
                 .await
                 .ok()?;
         }
         None
     }
-}
-
-fn mark_text(s:String, mark:&Vec<usize>, ui:&mut Ui) {
-    let style = Style::default();
-    let mut text = LayoutJob::default();
-    let mut last = 0;
-    let mut marked = false;
-    for i in mark.iter().chain(std::iter::once(&s.len())) {
-        let curtxt = s[last..*i].to_string();
-        if !marked {
-            RichText::new(curtxt)
-                .color(Color32::from_rgb(255, 255, 255))
-                .append_to(
-                    &mut text,
-                    &style,
-                    FontSelection::Default,
-                    Align::Center,
-                );
-        } else {
-            RichText::new(curtxt)
-                .color(Color32::from_rgb(0, 255, 255))
-                .underline()
-                .append_to(
-                    &mut text,
-                    &style,
-                    FontSelection::Default,
-                    Align::Center,
-                );
-        }
-        last = *i;
-        marked = !marked;
-    }
-    ui.label(text);
 }

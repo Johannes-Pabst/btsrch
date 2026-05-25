@@ -4,16 +4,21 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-arboard = "3.6.0"
+arboard = {version="3.6.0", default-features = false, features=["wl-clipboard-rs", "wayland-data-control"]}
 async-trait = "0.1.88"
 base64 = "0.22.1"
-eframe = "0.32.0"
-egui = "0.32.0"
-image = "0.25.6"
+eframe = {version="0.33.0", default-features = false, features = ["x11", "wayland", "wgpu"]}
+egui_extras = { version = "0.33.3", features = ["image", "file"] }
+existing_instance = "0.1.0"
+icon = "0.2.0"
+image = {version="0.25.6", default-features = false,features=["png"]}
+image-extras = {version="0.1.0", default-features = false,features=["xpm"]}
 open = "5.3.2"
 regex = "1.11.1"
+resvg = "0.47.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-single-instance = "0.3.3"
 tokio = { version = "1.46.1", features = ["full"] }
+toml = { version = "1.0.6", features = ["preserve_order"]}
+wgpu = { version = "27", default-features = false, features = ["vulkan", "gles"] }
 x11rb = "0.13.1"

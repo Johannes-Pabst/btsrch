@@ -1,6 +1,6 @@
 use std::{f64, vec};
 
-use crate::unit_calc_parser::unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber};
+use crate::parsers::unit_calc_parser::unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber};
 
 #[derive(Clone, PartialEq)]
 pub enum Token {
@@ -76,33 +76,39 @@ pub fn lex(input: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
 }
 pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
     let mut atomic = vec![
-        ("+".to_string(), vec![Token::Plus]),
-        ("-".to_string(), vec![Token::Minus]),
-        ("*".to_string(), vec![Token::Mult]),
-        ("/".to_string(), vec![Token::Div]),
-        ("^".to_string(), vec![Token::Power]),
-        ("<=".to_string(), vec![Token::LowerEq]),
-        ("<".to_string(), vec![Token::Lower]),
-        (">=".to_string(), vec![Token::HigherEq]),
-        (">".to_string(), vec![Token::Higher]),
-        ("==".to_string(), vec![Token::Eq]),
-        ("!=".to_string(), vec![Token::NEq]),
-        ("(".to_string(), vec![Token::OpenBracket]),
-        (")".to_string(), vec![Token::CloseBracket]),
-        ("as".to_string(), vec![Token::Convert]),
-        ("=>".to_string(), vec![Token::Convert]),
-        ("->".to_string(), vec![Token::Convert]),
-        ("to".to_string(), vec![Token::Convert]),
-        (".".to_string(), vec![Token::Dot]),
-        (",".to_string(), vec![Token::Comma]),
+        ("+", vec![Token::Plus]),
+        ("-", vec![Token::Minus]),
+        ("*", vec![Token::Mult]),
+        ("/", vec![Token::Div]),
+        ("per", vec![Token::Div]),
+        ("^", vec![Token::Power]),
+        ("<=", vec![Token::LowerEq]),
+        ("<", vec![Token::Lower]),
+        (">=", vec![Token::HigherEq]),
+        (">", vec![Token::Higher]),
+        ("==", vec![Token::Eq]),
+        ("!=", vec![Token::NEq]),
+        ("(", vec![Token::OpenBracket]),
+        (")", vec![Token::CloseBracket]),
+        ("as", vec![Token::Convert]),
+        ("=>", vec![Token::Convert]),
+        ("->", vec![Token::Convert]),
+        ("to", vec![Token::Convert]),
+        (".", vec![Token::Dot]),
+        ("²", vec![Token::Power, Token::Number("2".to_string())]),
         (
-            "²".to_string(),
+            "squared",
             vec![Token::Power, Token::Number("2".to_string())],
         ),
-        (
-            "³".to_string(),
-            vec![Token::Power, Token::Number("3".to_string())],
-        ),
+        ("³", vec![Token::Power, Token::Number("3".to_string())]),
+        ("cubed", vec![Token::Power, Token::Number("3".to_string())]),
+        ("⁴", vec![Token::Power, Token::Number("4".to_string())]),
+        ("⁵", vec![Token::Power, Token::Number("5".to_string())]),
+        ("⁶", vec![Token::Power, Token::Number("6".to_string())]),
+        ("⁷", vec![Token::Power, Token::Number("7".to_string())]),
+        ("⁸", vec![Token::Power, Token::Number("8".to_string())]),
+        ("⁹", vec![Token::Power, Token::Number("9".to_string())]),
+        ("⁰", vec![Token::Power, Token::Number("0".to_string())]),
     ];
     atomic.extend(
         get_function_names()
@@ -139,7 +145,7 @@ pub fn get_function_names() -> Vec<String> {
 }
 pub fn get_units() -> Vec<Unit> {
     let mut v = vec![];
-    v.extend(
+    v.push(
         Unit {
             name: "percent".to_string(),
             plural: "percents".to_string(),
@@ -151,11 +157,10 @@ pub fn get_units() -> Vec<Unit> {
             },
             priority: f32::NEG_INFINITY,
         }
-        .create()
-        .add_si_prefixes(),
+        .create(),
     );
 
-    v.extend(
+    v.push(
         Unit {
             name: "π".to_string(),
             plural: "π".to_string(),
@@ -167,8 +172,79 @@ pub fn get_units() -> Vec<Unit> {
             },
             priority: 0.0,
         }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "degree".to_string(),
+            plural: "degrees".to_string(),
+            abbreviation: "°".to_string(),
+            valid_names: vec!["deg".to_string()],
+            si: UnitNumber {
+                num: std::f64::consts::PI / 180.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.extend(
+        Unit {
+            name: "steradian".to_string(),
+            plural: "steradians".to_string(),
+            abbreviation: "sr".to_string(),
+            valid_names: vec![],
+            si: UnitNumber {
+                num: 1.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
         .create()
         .add_si_prefixes(),
+    );
+
+    v.push(
+        Unit {
+            name: "arcminute".to_string(),
+            plural: "arcminutes".to_string(),
+            abbreviation: "′".to_string(),
+            valid_names: vec![
+                "arcmin".to_string(),
+                "amin".to_string(),
+                "´".to_string(),
+                "'".to_string(),
+            ],
+            si: UnitNumber {
+                num: std::f64::consts::PI / 10800.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "arcsecond".to_string(),
+            plural: "arcseconds".to_string(),
+            abbreviation: "″".to_string(),
+            valid_names: vec![
+                "arcsec".to_string(),
+                "asec".to_string(),
+                "´´".to_string(),
+                "''".to_string(),
+                "′′".to_string(),
+            ],
+            si: UnitNumber {
+                num: std::f64::consts::PI / 648000.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create(),
     );
 
     v.extend(
@@ -706,7 +782,7 @@ pub fn get_units() -> Vec<Unit> {
         .add_si_prefixes(),
     );
 
-    v.extend(
+    v.push(
         Unit {
             name: "knot".to_string(),
             plural: "knots".to_string(),
@@ -725,10 +801,33 @@ pub fn get_units() -> Vec<Unit> {
                     },
                 ],
             },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "light speed".to_string(),
+            plural: "light speed".to_string(),
+            abbreviation: "c".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 2.99792458e8,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -1,
+                    },
+                ],
+            },
             priority: 0.0,
         }
-        .create()
-        .add_si_prefixes(),
+        .create(),
     );
 
     v.extend(
@@ -802,7 +901,7 @@ pub fn get_units() -> Vec<Unit> {
                 ],
             }
             .cleaned(),
-            priority: 0.0,
+            priority: -3.0,
         }
         .create(),
     ]);
@@ -953,6 +1052,136 @@ pub fn get_units() -> Vec<Unit> {
                 }],
             },
             priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "lightsecond".to_string(),
+            plural: "lightseconds".to_string(),
+            abbreviation: "ls".to_string(),
+            valid_names: vec!["light-second".to_string()],
+            si: UnitNumber {
+                num: 299_792_458.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "lightminute".to_string(),
+            plural: "lightminutes".to_string(),
+            abbreviation: "lmin".to_string(),
+            valid_names: vec!["light-minute".to_string()],
+            si: UnitNumber {
+                num: 299_792_458.0 * 60.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "lighthour".to_string(),
+            plural: "lighthours".to_string(),
+            abbreviation: "lh".to_string(),
+            valid_names: vec!["light-hour".to_string()],
+            si: UnitNumber {
+                num: 299_792_458.0 * 3600.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "lightday".to_string(),
+            plural: "lightdays".to_string(),
+            abbreviation: "ld".to_string(),
+            valid_names: vec!["light-day".to_string()],
+            si: UnitNumber {
+                num: 299_792_458.0 * 86400.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "lightyear".to_string(),
+            plural: "lightyears".to_string(),
+            abbreviation: "ly".to_string(),
+            valid_names: vec!["light-year".to_string()],
+            si: UnitNumber {
+                num: 9_460_730_472_580_800.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "nautical_mile".to_string(),
+            plural: "nautical_miles".to_string(),
+            abbreviation: "nmi".to_string(),
+            valid_names: vec![
+                "nauticalmile".to_string(),
+                "nautical_mile".to_string(),
+                "nm".to_string(),
+            ],
+            si: UnitNumber {
+                num: 1852.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "astronomicalunit".to_string(),
+            plural: "astronomicalunits".to_string(),
+            abbreviation: "AU".to_string(),
+            valid_names: vec!["au".to_string(), "astronomical-unit".to_string()],
+            si: UnitNumber {
+                num: 149_597_870_700.0,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
         }
         .create(),
     );

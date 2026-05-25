@@ -8,8 +8,14 @@ a cross-platform search bar that opens with a keyboard shortcut, lets you type s
 - File/folder path opening
 - Unicode & emoji search with images
 - Custom shortcuts via scripts directory
-- Works on Windows, X11, and Wayland
+- Works on Windows, X11, and Wayland natively
 - Extend functionality by adding Rust modules and recompiling
+- extensive configuration possibilities
+
+### Features exclusive to specific OS / linux DE / tool
+- on linux, searched apps show icons according to the freedesktop standard
+- on linux, pasting in a command offers to run it on the standard terminal emulator
+- when using [cliphist](https://github.com/sentriz/cliphist/tree/master), searching and recopying old clipboard entries is supported. No image previews yet, though.
 
 ## capabilities
 ### unit calculator
@@ -89,9 +95,14 @@ alt + space
 ```
 after adding this to your config file at `~/.config/sxhkd/sxhkdrc`, you'll have to make sxhkd start at boot. Then, everything should work. If it doesn't, feel free to post an issue with a detailed error message.
 
+## configuration
+a file `config.toml` should be created in the repo root in order to configure how the search bar looks, how big it is, the priority of specific search result providers and how they find their results can be configured. The standard visual configuration is intentionally minimal in order to make it easy for users to select their preferred look themselves. Sample configuration files can be found in `reporoot/sample_configs`. In case a whole entry is missing from config.toml, running btsrch will inform you and suggest some default values ready to copy to your config.
+
+### Troubleshooting
+- on cinnamon 6.6+, btsrch might not gain focus when opened. As a workaround, the following command can be used in the cinnamon shortcut manager to start btsrch and then give it focus using xdotool: `bash -c "/path/to/btsrch/repo/btsrch.sh & xdotool search --sync --name "^BTSRCH$" windowactivate"`
+- desktop apps with `Terminal = true` in their .desktop files like htop and entered commands need to be launched in a terminal. finding the standard terminal emulator in any linux DE unfortunately is far from trivial. btsrch should manage to find it in gnome and cinnamon. In case it doesn't find a standard terminal emulator, the easiest way to help it out is to set the TERMINAL environment variable to your emulator. In case it still doesn't work, please open an issue on github.
 
 ## Licenses
-
 
 ### License for list.with.images.with.modifiers.json
 ISC License
