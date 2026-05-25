@@ -121,8 +121,8 @@ impl QueryParser for ClipboardParser {
 pub async fn cliphist_raw(preview_width: u64) -> Result<String, String> {
     use std::process::Stdio;
 
-    Ok(String::from_utf8(
-        Command::new("cliphist")
+    Ok(String::from_utf8_lossy(
+        &Command::new("cliphist")
             .arg("-preview-width")
             .arg(preview_width.to_string())
             .arg("list")
@@ -133,8 +133,7 @@ pub async fn cliphist_raw(preview_width: u64) -> Result<String, String> {
             .await
             .map_err(|e| format!("{:?}", e))?
             .stdout,
-    )
-    .map_err(|e| format!("{:?}", e))?)
+    ).to_string())
 }
 #[cfg(target_os = "linux")]
 pub async fn cliphist_split(preview_width: u64) -> Result<Vec<(u64, String)>, String> {
