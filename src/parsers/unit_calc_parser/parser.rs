@@ -1,6 +1,5 @@
 use crate::parsers::unit_calc_parser::{
-    lexer::{Token, Unit},
-    unit_number_parser::{superscript, UnitNumber},
+    interpreter::Value, lexer::{Token, Unit}, unit_number_parser::{UnitNumber, superscript}
 };
 pub enum UnitCalculation {
     Plus(Box<UnitCalculation>, Box<UnitCalculation>),
@@ -10,38 +9,68 @@ pub enum UnitCalculation {
     Div(Box<UnitCalculation>, Box<UnitCalculation>),
     Pow(Box<UnitCalculation>, Box<UnitCalculation>),
     Bracket(Box<UnitCalculation>),
+    Function(String, Box<UnitCalculation>),
+    Touple(Vec<UnitCalculation>),
     Number(UnitNumber),
+    Value(Value),
 }
 pub enum UnitConversion {
     ComplexUnitConversion(UnitCalculation, UnitCalculation),
     PrimitiveUnitConversion(UnitCalculation, Unit),
     Calculation(UnitCalculation),
 }
-impl ToString for UnitConversion{
+impl ToString for UnitConversion {
     fn to_string(&self) -> String {
         match self {
-            Self::Calculation(c)=>{format!("{}",c.to_string())}
-            Self::PrimitiveUnitConversion(c,u)=>{format!("{} as {}",c.to_string(),u.plural)}
-            Self::ComplexUnitConversion(c,u)=>{format!("{} as {}",c.to_string(),u.to_string())}
+            Self::Calculation(c) => {
+                format!("{}", c.to_string())
+            }
+            Self::PrimitiveUnitConversion(c, u) => {
+                format!("{} as {}", c.to_string(), u.plural)
+            }
+            Self::ComplexUnitConversion(c, u) => {
+                format!("{} as {}", c.to_string(), u.to_string())
+            }
         }
     }
 }
-impl ToString for UnitCalculation{
+impl ToString for UnitCalculation {
     fn to_string(&self) -> String {
         match self {
-            Self::Plus(a, b)=>{format!("{} + {}", a.to_string(), b.to_string())}
-            Self::Minus(a, b) => { format!("{} - {}", a.to_string(), b.to_string()) }
-            Self::Mult(a, b) => { format!("{} * {}", a.to_string(), b.to_string()) }
-            Self::ImplMult(a, b) => { format!("{}{}", a.to_string(), b.to_string()) }
-            Self::Div(a, b) => { format!("{}/{}", a.to_string(), b.to_string()) }
+            Self::Plus(a, b) => {
+                format!("{} + {}", a.to_string(), b.to_string())
+            }
+            Self::Minus(a, b) => {
+                format!("{} - {}", a.to_string(), b.to_string())
+            }
+            Self::Mult(a, b) => {
+                format!("{} * {}", a.to_string(), b.to_string())
+            }
+            Self::ImplMult(a, b) => {
+                format!("{}{}", a.to_string(), b.to_string())
+            }
+            Self::Div(a, b) => {
+                format!("{}/{}", a.to_string(), b.to_string())
+            }
             Self::Pow(a, b) => {
-                if let Self::Number(b)=b.as_ref(){
-                    return format!("{}{}", a.to_string(), superscript(b.to_string()))
+                if let Self::Number(b) = b.as_ref() {
+                    return format!("{}{}", a.to_string(), superscript(b.to_string()));
                 }
                 format!("{}^{}", a.to_string(), b.to_string())
             }
-            Self::Bracket(a) => { format!("({})", a.to_string()) }
-            Self::Number(n) => { n.to_string() }
+            Self::Bracket(a) => {
+                format!("({})", a.to_string())
+            }
+            Self::Function(s, a) => {
+                format!("{s}({})", a.to_string())
+            }
+            Self::Touple(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", "),
+            Self::Number(n) => n.to_string(),
+            Self::Value(v)=>v.to_string(),
         }
     }
 }
@@ -49,16 +78,47 @@ pub fn parse_unit_conversion(tokens: Vec<Token>) -> Result<UnitConversion, Strin
     match split_at(tokens, vec![Token::Convert]) {
         SplitAtOut::Split(eq1, _, eq2) => {
             if let Some(Token::Unit(_, Some(u))) = eq2.first() {
-                if eq2.len()==1{
+                if eq2.len() == 1 {
                     return Ok(UnitConversion::PrimitiveUnitConversion(
                         parse_unit_add_sub(eq1)?,
                         u.clone(),
-                    ))
+                    ));
                 }
             }
-            Ok(UnitConversion::ComplexUnitConversion(parse_unit_add_sub(eq1)?, parse_unit_add_sub(eq2)?))
+            Ok(UnitConversion::ComplexUnitConversion(
+                parse_unit_add_sub(eq1)?,
+                parse_unit_add_sub(eq2)?,
+            ))
         }
         SplitAtOut::NoSplit(tokens) => Ok(UnitConversion::Calculation(parse_unit_add_sub(tokens)?)),
+    }
+}
+pub fn parse_unit_touple(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
+    match split_at(tokens, vec![Token::Comma]) {
+        SplitAtOut::Split(eq1, t, eq2) => match t {
+            Token::Comma => {
+                let mut v=Vec::new();
+                match parse_unit_touple(eq1)?{
+                    UnitCalculation::Touple(v2)=>{
+                        v.extend(v2);
+                    }
+                    t=>{
+                        v.push(t);
+                    }
+                }
+                match parse_unit_touple(eq2)?{
+                    UnitCalculation::Touple(v2)=>{
+                        v.extend(v2);
+                    }
+                    t=>{
+                        v.push(t);
+                    }
+                }
+                Ok(UnitCalculation::Touple(v))
+            },
+            _ => todo!(),
+        },
+        SplitAtOut::NoSplit(tokens) => parse_unit_add_sub(tokens),
     }
 }
 pub fn parse_unit_add_sub(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
@@ -142,7 +202,7 @@ pub fn parse_unit_mult_div_1(tokens: Vec<Token>) -> Result<UnitCalculation, Stri
                         }
                     }
                 }
-                _ => {},
+                _ => {}
             };
         }
     }
@@ -200,7 +260,7 @@ pub fn parse_unit_mult_div_2(tokens: Vec<Token>) -> Result<UnitCalculation, Stri
                         }
                     }
                 }
-                _ => {},
+                _ => {}
             };
         }
     }
@@ -215,12 +275,24 @@ pub fn parse_unit_pow(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
             )),
             _ => todo!(),
         },
-        SplitAtOut::NoSplit(tokens) => parse_unit_bracket(tokens),
+        SplitAtOut::NoSplit(tokens) => parse_unit_function(tokens),
+    }
+}
+pub fn parse_unit_function(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
+    if let Some(Token::FunctionName(s)) = tokens.first() {
+        Ok(UnitCalculation::Function(
+            s.clone(),
+            Box::new(parse_unit_bracket(tokens[1..tokens.len()].to_vec())?),
+        ))
+    } else {
+        parse_unit_bracket(tokens)
     }
 }
 pub fn parse_unit_bracket(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
     if Some(&Token::OpenBracket) == tokens.first() && Some(&Token::CloseBracket) == tokens.last() {
-        Ok(UnitCalculation::Bracket(Box::new(parse_unit_add_sub(tokens[1..tokens.len() - 1].to_vec())?)))
+        Ok(UnitCalculation::Bracket(Box::new(parse_unit_touple(
+            tokens[1..tokens.len() - 1].to_vec(),
+        )?)))
     } else {
         parse_unit_number(tokens)
     }
@@ -239,18 +311,16 @@ pub fn parse_unit_number(mut tokens: Vec<Token>) -> Result<UnitCalculation, Stri
         },
         2 => {
             let mut drain = tokens.drain(..);
-            match (
-                drain.next().unwrap(),
-                drain.next().unwrap(),
-            ) {
-                (Token::Dot, Token::Number(n)) => {
-                    format!(".{}",n).parse::<f64>().map_err(|e| format!("{:?}", e)).map(|n| {
+            match (drain.next().unwrap(), drain.next().unwrap()) {
+                (Token::Dot, Token::Number(n)) => format!(".{}", n)
+                    .parse::<f64>()
+                    .map_err(|e| format!("{:?}", e))
+                    .map(|n| {
                         UnitCalculation::Number(UnitNumber {
                             num: n,
                             units: Vec::new(),
                         })
-                    })
-                }
+                    }),
                 _ => Err(format!("wrong number format!")),
             }
         }
@@ -261,14 +331,15 @@ pub fn parse_unit_number(mut tokens: Vec<Token>) -> Result<UnitCalculation, Stri
                 drain.next().unwrap(),
                 drain.next().unwrap(),
             ) {
-                (Token::Number(n1),Token::Dot, Token::Number(n2)) => {
-                    format!("{}.{}",n1,n2).parse::<f64>().map_err(|e| format!("{:?}", e)).map(|n| {
+                (Token::Number(n1), Token::Dot, Token::Number(n2)) => format!("{}.{}", n1, n2)
+                    .parse::<f64>()
+                    .map_err(|e| format!("{:?}", e))
+                    .map(|n| {
                         UnitCalculation::Number(UnitNumber {
                             num: n,
                             units: Vec::new(),
                         })
-                    })
-                }
+                    }),
                 _ => Err(format!("wrong number format!")),
             }
         }

@@ -70,12 +70,11 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
                 let unit_number = format!(
                     "{:.5}",
                     UnitCalculation::Div(
-                        Box::new(UnitCalculation::Number(un.clone())),
+                        Box::new(UnitCalculation::Value(un.clone())),
                         Box::new(UnitCalculation::Number(nun.clone()))
                     )
                     .execute()
-                    .unwrap()
-                    .num
+                    .unwrap().to_string()
                 )
                 .trim_end_matches('0')
                 .trim_end_matches('.')
@@ -101,21 +100,24 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
         }
     }
     if let Some(u) = u {
-        let unum = UnitCalculation::Div(
-            Box::new(UnitCalculation::Number(un.clone())),
-            Box::new(UnitCalculation::Number(u.si.pow_i64(exponent).clone())),
-        )
-        .execute()
-        .unwrap();
-        if unum.units.len() > 0 {
+        let unum=UnitCalculation::Div(
+                Box::new(UnitCalculation::Value(un.clone())),
+                Box::new(UnitCalculation::Number(u.si.pow_i64(exponent).clone()))
+            )
+            .execute()
+            .unwrap();
+        if unum.flatten().iter().any(|x| x.units.len()>0){
             return Err("incompatible target unit".to_string());
         }
-        let unit_number = format!("{:.5}", unum.num)
-            .trim_end_matches('0')
-            .trim_end_matches('.')
-            .to_string();
-        let mut uname = u.plural;
-        if unit_number == "1".to_string() {
+        let unit_number = format!(
+            "{:.5}",
+            unum.to_string()
+        )
+        .trim_end_matches('0')
+        .trim_end_matches('.')
+        .to_string();
+    let mut uname = u.plural;
+    if unit_number == "1".to_string() {
             uname = u.name;
         }
         if exponent == 1 {
@@ -128,21 +130,24 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
                 superscript(exponent.to_string())
             ))
         }
-    } else if let Some(tu) = tu {
-        let unum = UnitCalculation::Div(
-            Box::new(UnitCalculation::Number(un.clone())),
-            Box::new(UnitCalculation::Number(tu.0.clone())),
-        )
-        .execute()
-        .unwrap();
-        if unum.units.len() > 0 {
+    }else if let Some(tu)=tu{
+        let unum=UnitCalculation::Div(
+                Box::new(UnitCalculation::Value(un.clone())),
+                Box::new(UnitCalculation::Number(tu.0.clone()))
+            )
+            .execute()
+            .unwrap();
+        if unum.flatten().iter().any(|x| x.units.len()>0){
             return Err("incompatible target unit".to_string());
         }
-        let unit_number = format!("{:.5}", unum.num)
-            .trim_end_matches('0')
-            .trim_end_matches('.')
-            .to_string();
-        Ok(format!("{unit_number} {}", tu.1))
+        let unit_number = format!(
+            "{:.5}",
+            unum.to_string()
+        )
+        .trim_end_matches('0')
+        .trim_end_matches('.')
+        .to_string();
+        Ok(format!("{unit_number} {}",tu.1))
     } else {
         Ok(un.to_string())
     }
