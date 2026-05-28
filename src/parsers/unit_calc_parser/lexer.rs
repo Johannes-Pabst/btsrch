@@ -1,6 +1,6 @@
 use std::{f64, vec};
 
-use crate::parsers::unit_calc_parser::unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber};
+use crate::parsers::unit_calc_parser::{interpreter::get_function_names, unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber}};
 
 #[derive(Clone, PartialEq)]
 pub enum Token {
@@ -95,6 +95,7 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         ("->".to_string(), vec![Token::Convert]),
         ("to".to_string(), vec![Token::Convert]),
         (".".to_string(), vec![Token::Dot]),
+        (",".to_string(), vec![Token::Comma]),
         (
             "²".to_string(),
             vec![Token::Power, Token::Number("2".to_string())],
@@ -169,9 +170,6 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         }
     }
     None
-}
-pub fn get_function_names() -> Vec<String> {
-    vec!["sqrt".to_string()]
 }
 pub fn get_units() -> Vec<Unit> {
     let mut v = vec![];
