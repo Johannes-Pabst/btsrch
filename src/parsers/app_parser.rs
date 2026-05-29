@@ -1,8 +1,8 @@
 use std::{process::Command, sync::Arc};
 
-use serde::{Deserialize, Serialize};
 #[cfg(target_os = "windows")]
 use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
@@ -10,7 +10,9 @@ use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::{
-    config::Config, query_manager::{ConfigDefault, ListEntry, QueryParser}, search_helper::{SearchConfig, mark_text, search}
+    config::Config,
+    query_manager::{ConfigDefault, ListEntry, QueryParser},
+    search_helper::{SearchConfig, mark_text, search},
 };
 
 /*
@@ -67,22 +69,42 @@ pub struct AppInfo {
 pub struct AppParser {
     apps: Arc<RwLock<Vec<AppInfo>>>,
     config: AppParserConfig,
-    search_config:SearchConfig,
+    search_config: SearchConfig,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct DotDesktopExecSubstitute {
+    to_replace: String,
+    replace_with: String,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct AppParserConfig {
     base_priority: f32,
+    dotdesktop_exec_substitutes: Vec<DotDesktopExecSubstitute>,
 }
 impl Default for AppParserConfig {
     fn default() -> Self {
-        Self { base_priority: 50.0 }
+        Self {
+            base_priority: 50.0,
+            dotdesktop_exec_substitutes: Vec::new(),
+        }
+    }
+}
+impl Default for DotDesktopExecSubstitute {
+    fn default() -> Self {
+        Self {
+            to_replace: "".to_string(),
+            replace_with: "".to_string(),
+        }
     }
 }
 impl ConfigDefault for AppParser {
-    fn create(config:&mut Config) -> Self {
+    fn create(config: &mut Config) -> Self {
         let app_list = Arc::new(RwLock::new(Vec::new()));
         let app_list_clone = app_list.clone();
+        let self_config: AppParserConfig = config.get_namespace();
+        let self_config_clone = self_config.clone();
         let t = tokio::task::spawn_blocking(|| async move {
             #[cfg(target_os = "windows")]
             {
@@ -293,7 +315,12 @@ impl ConfigDefault for AppParser {
                                         apps.push(AppInfo {
                                             filename,
                                             name: name_comb.unwrap(),
-                                            exec: exec.unwrap(),
+                                            exec: self_config_clone
+                                                .dotdesktop_exec_substitutes
+                                                .iter()
+                                                .fold(exec.unwrap(), |a, b| {
+                                                    a.replace(&b.to_replace, &b.replace_with)
+                                                }),
                                             terminal,
                                             search_terms: search_terms.or(search_terms_lang),
                                             icon,
@@ -311,7 +338,11 @@ impl ConfigDefault for AppParser {
         tokio::spawn(async move {
             t.await.unwrap().await;
         });
-        Self { apps: app_list, config:config.get_namespace(), search_config: config.get_namespace() }
+        Self {
+            apps: app_list,
+            config: self_config,
+            search_config: config.get_namespace(),
+        }
     }
 }
 #[async_trait]
@@ -375,7 +406,7 @@ impl QueryParser for AppParser {
                             if s3.terminal {
                                 use crate::os_utils::run_in_terminal;
 
-                                let exec=s3.exec.clone();
+                                let exec = s3.exec.clone();
                                 tokio::spawn(async move {
                                     run_in_terminal(exec, false).await;
                                     std::process::exit(0);
@@ -385,8 +416,9 @@ impl QueryParser for AppParser {
                                     .exec
                                     .split(' ')
                                     .filter(|s| !vec!["%F", "%U"].contains(s))
-                                    .collect::<Vec<&str>>();
-                                let _ = Command::new(args[0])
+                                    .map(|s| s.replace("%f", ""))
+                                    .collect::<Vec<String>>();
+                                let _ = Command::new(args[0].as_str())
                                     .args(&mut args[1..])
                                     .stdin(std::process::Stdio::null())
                                     .stdout(std::process::Stdio::null())
@@ -397,7 +429,7 @@ impl QueryParser for AppParser {
                             }
                         }
                     })),
-                    priority:priority+self.config.base_priority,
+                    priority: priority + self.config.base_priority,
                 })
                 .await
                 .ok()?;

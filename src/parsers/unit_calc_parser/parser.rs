@@ -1,6 +1,5 @@
 use crate::parsers::unit_calc_parser::{
-    lexer::{Token, Unit},
-    unit_number_parser::{UnitNumber, superscript},
+    interpreter::Value, lexer::{Token, Unit}, unit_number_parser::{UnitNumber, superscript}
 };
 pub enum UnitCalculation {
     Plus(Box<UnitCalculation>, Box<UnitCalculation>),
@@ -10,7 +9,10 @@ pub enum UnitCalculation {
     Div(Box<UnitCalculation>, Box<UnitCalculation>),
     Pow(Box<UnitCalculation>, Box<UnitCalculation>),
     Bracket(Box<UnitCalculation>),
+    Function(String, Box<UnitCalculation>),
+    Touple(Vec<UnitCalculation>),
     Number(UnitNumber),
+    Value(Value),
 }
 pub enum UnitConversion {
     ComplexUnitConversion(UnitCalculation, UnitCalculation),
@@ -59,7 +61,16 @@ impl ToString for UnitCalculation {
             Self::Bracket(a) => {
                 format!("({})", a.to_string())
             }
+            Self::Function(s, a) => {
+                format!("{s}({})", a.to_string())
+            }
+            Self::Touple(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", "),
             Self::Number(n) => n.to_string(),
+            Self::Value(v)=>v.to_string(),
         }
     }
 }
@@ -80,6 +91,34 @@ pub fn parse_unit_conversion(tokens: Vec<Token>) -> Result<UnitConversion, Strin
             ))
         }
         SplitAtOut::NoSplit(tokens) => Ok(UnitConversion::Calculation(parse_unit_add_sub(tokens)?)),
+    }
+}
+pub fn parse_unit_touple(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
+    match split_at(tokens, vec![Token::Comma]) {
+        SplitAtOut::Split(eq1, t, eq2) => match t {
+            Token::Comma => {
+                let mut v=Vec::new();
+                match parse_unit_touple(eq1)?{
+                    UnitCalculation::Touple(v2)=>{
+                        v.extend(v2);
+                    }
+                    t=>{
+                        v.push(t);
+                    }
+                }
+                match parse_unit_touple(eq2)?{
+                    UnitCalculation::Touple(v2)=>{
+                        v.extend(v2);
+                    }
+                    t=>{
+                        v.push(t);
+                    }
+                }
+                Ok(UnitCalculation::Touple(v))
+            },
+            _ => todo!(),
+        },
+        SplitAtOut::NoSplit(tokens) => parse_unit_add_sub(tokens),
     }
 }
 pub fn parse_unit_add_sub(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
@@ -246,12 +285,22 @@ pub fn parse_unit_pow(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
             )),
             _ => todo!(),
         },
-        SplitAtOut::NoSplit(tokens) => parse_unit_bracket(tokens),
+        SplitAtOut::NoSplit(tokens) => parse_unit_function(tokens),
+    }
+}
+pub fn parse_unit_function(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
+    if let Some(Token::FunctionName(s)) = tokens.first() {
+        Ok(UnitCalculation::Function(
+            s.clone(),
+            Box::new(parse_unit_bracket(tokens[1..tokens.len()].to_vec())?),
+        ))
+    } else {
+        parse_unit_bracket(tokens)
     }
 }
 pub fn parse_unit_bracket(tokens: Vec<Token>) -> Result<UnitCalculation, String> {
     if Some(&Token::OpenBracket) == tokens.first() && Some(&Token::CloseBracket) == tokens.last() {
-        Ok(UnitCalculation::Bracket(Box::new(parse_unit_add_sub(
+        Ok(UnitCalculation::Bracket(Box::new(parse_unit_touple(
             tokens[1..tokens.len() - 1].to_vec(),
         )?)))
     } else {

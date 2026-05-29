@@ -1,6 +1,6 @@
 use std::{f64, vec};
 
-use crate::parsers::unit_calc_parser::unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber};
+use crate::parsers::unit_calc_parser::{interpreter::get_function_names, unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber}};
 
 #[derive(Clone, PartialEq)]
 pub enum Token {
@@ -21,7 +21,9 @@ pub enum Token {
     CloseBracket,
     Convert,
     Dot,
+    Comma,
     Unit(UnitNumber, Option<Unit>),
+    FunctionName(String),
 }
 impl ToString for Token {
     fn to_string(&self) -> String {
@@ -29,6 +31,7 @@ impl ToString for Token {
             Token::Number(s) => format!("{s}").to_string(),
             Token::Unit(s, _) => s.to_string(),
             Token::StringLiteral(s) => format!("\"{s}\""),
+            Token::FunctionName(s) => format!("fn \"{s}\""),
             Token::Plus => "+".to_string(),
             Token::Minus => "-".to_string(),
             Token::Mult => "*".to_string(),
@@ -44,6 +47,7 @@ impl ToString for Token {
             Token::CloseBracket => ")".to_string(),
             Token::Convert => "in".to_string(),
             Token::Dot => ".".to_string(),
+            Token::Comma => ",".to_string(),
         }
     }
 }
@@ -71,41 +75,78 @@ pub fn lex(input: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
     Some(output)
 }
 pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
-    let atomic = vec![
-        ("+", vec![Token::Plus]),
-        ("-", vec![Token::Minus]),
-        ("*", vec![Token::Mult]),
-        ("/", vec![Token::Div]),
-        ("per", vec![Token::Div]),
-        ("^", vec![Token::Power]),
-        ("<=", vec![Token::LowerEq]),
-        ("<", vec![Token::Lower]),
-        (">=", vec![Token::HigherEq]),
-        (">", vec![Token::Higher]),
-        ("==", vec![Token::Eq]),
-        ("!=", vec![Token::NEq]),
-        ("(", vec![Token::OpenBracket]),
-        (")", vec![Token::CloseBracket]),
-        ("as", vec![Token::Convert]),
-        ("=>", vec![Token::Convert]),
-        ("->", vec![Token::Convert]),
-        ("to", vec![Token::Convert]),
-        (".", vec![Token::Dot]),
-        ("²", vec![Token::Power, Token::Number("2".to_string())]),
+    let mut atomic = vec![
+        ("+".to_string(), vec![Token::Plus]),
+        ("-".to_string(), vec![Token::Minus]),
+        ("*".to_string(), vec![Token::Mult]),
+        ("/".to_string(), vec![Token::Div]),
+        ("per".to_string(), vec![Token::Div]),
+        ("^".to_string(), vec![Token::Power]),
+        ("<=".to_string(), vec![Token::LowerEq]),
+        ("<".to_string(), vec![Token::Lower]),
+        (">=".to_string(), vec![Token::HigherEq]),
+        (">".to_string(), vec![Token::Higher]),
+        ("==".to_string(), vec![Token::Eq]),
+        ("!=".to_string(), vec![Token::NEq]),
+        ("(".to_string(), vec![Token::OpenBracket]),
+        (")".to_string(), vec![Token::CloseBracket]),
+        ("as".to_string(), vec![Token::Convert]),
+        ("=>".to_string(), vec![Token::Convert]),
+        ("->".to_string(), vec![Token::Convert]),
+        ("to".to_string(), vec![Token::Convert]),
+        (".".to_string(), vec![Token::Dot]),
+        (",".to_string(), vec![Token::Comma]),
         (
-            "squared",
+            "²".to_string(),
             vec![Token::Power, Token::Number("2".to_string())],
         ),
-        ("³", vec![Token::Power, Token::Number("3".to_string())]),
-        ("cubed", vec![Token::Power, Token::Number("3".to_string())]),
-        ("⁴", vec![Token::Power, Token::Number("4".to_string())]),
-        ("⁵", vec![Token::Power, Token::Number("5".to_string())]),
-        ("⁶", vec![Token::Power, Token::Number("6".to_string())]),
-        ("⁷", vec![Token::Power, Token::Number("7".to_string())]),
-        ("⁸", vec![Token::Power, Token::Number("8".to_string())]),
-        ("⁹", vec![Token::Power, Token::Number("9".to_string())]),
-        ("⁰", vec![Token::Power, Token::Number("0".to_string())]),
+        (
+            "squared".to_string(),
+            vec![Token::Power, Token::Number("2".to_string())],
+        ),
+        (
+            "³".to_string(),
+            vec![Token::Power, Token::Number("3".to_string())],
+        ),
+        (
+            "cubed".to_string(),
+            vec![Token::Power, Token::Number("3".to_string())],
+        ),
+        (
+            "⁴".to_string(),
+            vec![Token::Power, Token::Number("4".to_string())],
+        ),
+        (
+            "⁵".to_string(),
+            vec![Token::Power, Token::Number("5".to_string())],
+        ),
+        (
+            "⁶".to_string(),
+            vec![Token::Power, Token::Number("6".to_string())],
+        ),
+        (
+            "⁷".to_string(),
+            vec![Token::Power, Token::Number("7".to_string())],
+        ),
+        (
+            "⁸".to_string(),
+            vec![Token::Power, Token::Number("8".to_string())],
+        ),
+        (
+            "⁹".to_string(),
+            vec![Token::Power, Token::Number("9".to_string())],
+        ),
+        (
+            "⁰".to_string(),
+            vec![Token::Power, Token::Number("0".to_string())],
+        ),
     ];
+    atomic.extend(
+        get_function_names()
+            .drain(..)
+            .map(|name| (name.clone(), vec![Token::FunctionName(name)]))
+            .collect::<Vec<(String, Vec<Token>)>>(),
+    );
     if let Some(t) = atomic.iter().find(|a| a.0 == s) {
         return Some(t.1.iter().cloned().collect());
     }
