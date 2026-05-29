@@ -4,3 +4,4 @@ pub mod unit_number_parser;
 pub mod parser;
 pub mod interpreter;
 pub mod unit_calculator;
+pub mod fraction;

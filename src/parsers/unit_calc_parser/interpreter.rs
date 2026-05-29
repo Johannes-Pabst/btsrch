@@ -86,7 +86,13 @@ impl UnitCalculation {
             },
             Self::Pow(a, b) => match (a.execute()?, b.execute()?) {
                 (Value::UnitNumber(a), Value::UnitNumber(b)) => {
-                    Ok(Value::UnitNumber(a.pow_i64(b.to_i64()?)))
+                    if a.units.len()>0{
+                        Ok(Value::UnitNumber(a.pow_i64(b.to_i64()?)))
+                    }else if b.units.len()==0{
+                        Ok(Value::UnitNumber(UnitNumber { num: a.num.powf(b.num), units: Vec::new() }))
+                    }else{
+                        Err("units in the exponents!".to_string())
+                    }
                 }
                 _ => Err("cannot calculate using touples yet!".to_string()),
             },
