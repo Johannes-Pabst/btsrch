@@ -392,8 +392,8 @@ impl QueryParser for AppParser {
                                 let mut args = s3
                                     .exec
                                     .split(' ')
-                                    .filter(|s| !vec!["%F", "%U"].contains(s))
-                                    .map(|s| s.replace("%f", ""))
+                                    .filter(|s| !vec!["%F", "%U", "%u"].contains(s))
+                                    .map(|s| s.replace("%f", "").replace("%u", ""))
                                     .collect::<Vec<String>>();
                                 let _ = Command::new(args[0].as_str())
                                     .args(&mut args[1..])
