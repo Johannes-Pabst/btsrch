@@ -21,6 +21,7 @@ error_priority = -100.0
 
 [AppParser]
 base_priority = 50.0
+dotdesktop_exec_substitutes = []
 
 [UnicodeParser]
 base_priority = 20.0

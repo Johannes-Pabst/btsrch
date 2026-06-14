@@ -128,10 +128,20 @@ pub fn parse_unit_add_sub(tokens: Vec<Token>) -> Result<UnitCalculation, String>
                 Box::new(parse_unit_add_sub(eq1)?),
                 Box::new(parse_unit_add_sub(eq2)?),
             )),
-            Token::Minus => Ok(UnitCalculation::Minus(
-                Box::new(parse_unit_add_sub(eq1)?),
-                Box::new(parse_unit_add_sub(eq2)?),
-            )),
+            Token::Minus => Ok(if eq1.len() == 0 {
+                UnitCalculation::Mult(
+                    Box::new(UnitCalculation::Number(UnitNumber {
+                        num: -1.0,
+                        units: Vec::new(),
+                    })),
+                    Box::new(parse_unit_add_sub(eq2)?),
+                )
+            } else {
+                UnitCalculation::Minus(
+                    Box::new(parse_unit_add_sub(eq1)?),
+                    Box::new(parse_unit_add_sub(eq2)?),
+                )
+            }),
             _ => todo!(),
         },
         SplitAtOut::NoSplit(tokens) => parse_unit_mult_div_1(tokens),

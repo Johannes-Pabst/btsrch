@@ -34,6 +34,20 @@ impl Value {
             Self::UnitNumber(u) => vec![u.clone()],
         }
     }
+    pub fn map<F>(&self, f:&F)->Result<Self,String> where F: Fn(UnitNumber)->Result<UnitNumber,String>{
+        match self {
+            Self::Touple(v)=>{
+                let mut v2=Vec::new();
+                for n in v{
+                    v2.push(n.map(f)?);
+                }
+                Ok(Self::Touple(v2))
+            }
+            Self::UnitNumber(n)=>{
+                Ok(Self::UnitNumber(f(n.clone())?))
+            }
+        }
+    }
 }
 impl ToString for Value{
     fn to_string(&self) -> String {
@@ -72,7 +86,13 @@ impl UnitCalculation {
             },
             Self::Pow(a, b) => match (a.execute()?, b.execute()?) {
                 (Value::UnitNumber(a), Value::UnitNumber(b)) => {
-                    Ok(Value::UnitNumber(a.pow_i64(b.to_i64()?)))
+                    if a.units.len()>0{
+                        Ok(Value::UnitNumber(a.pow_i64(b.to_i64()?)))
+                    }else if b.units.len()==0{
+                        Ok(Value::UnitNumber(UnitNumber { num: a.num.powf(b.num), units: Vec::new() }))
+                    }else{
+                        Err("units in the exponents!".to_string())
+                    }
                 }
                 _ => Err("cannot calculate using touples yet!".to_string()),
             },
@@ -85,10 +105,7 @@ impl UnitCalculation {
             Self::Function(s, a) => {
                 let v = a.execute()?;
                 match s.as_str() {
-                    "sqrt" => match v {
-                        Value::UnitNumber(n) => Ok(Value::UnitNumber(n.pow_one_over_i(2)?)),
-                        Value::Touple(_) => Err("cannot apply sqrt to touples!".to_string()),
-                    },
+                    "sqrt" => Ok(v.map(&|n| n.pow_one_over_i(2))?),
                     _ => Err(format!("unknown function: {}", s)),
                 }
             }
@@ -102,4 +119,7 @@ impl UnitCalculation {
             }
         }
     }
+}
+pub fn get_function_names() -> Vec<String> {
+    vec!["sqrt".to_string()]
 }
