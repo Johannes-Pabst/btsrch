@@ -94,6 +94,7 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         ("=>".to_string(), vec![Token::Convert]),
         ("->".to_string(), vec![Token::Convert]),
         ("to".to_string(), vec![Token::Convert]),
+        (" in ".to_string(), vec![Token::Convert]),
         (".".to_string(), vec![Token::Dot]),
         (",".to_string(), vec![Token::Comma]),
         (
