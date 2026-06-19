@@ -310,7 +310,7 @@ pub fn parse_unit_bracket(tokens: Vec<Token>) -> Result<UnitCalculation, String>
 pub fn parse_unit_number(mut tokens: Vec<Token>) -> Result<UnitCalculation, String> {
     match tokens.len() {
         1 => match tokens.drain(..).next().unwrap() {
-            Token::Number(n) => n.parse::<f64>().map_err(|e| format!("{:?}", e)).map(|n| {
+            Token::Number(n) => n.parse::<f64>().map_err(|e| format!("{}: {:?}",n, e)).map(|n| {
                 UnitCalculation::Number(UnitNumber {
                     num: n,
                     units: Vec::new(),

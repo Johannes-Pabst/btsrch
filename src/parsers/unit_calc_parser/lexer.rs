@@ -1,6 +1,9 @@
 use std::{f64, vec};
 
-use crate::parsers::unit_calc_parser::{interpreter::get_function_names, unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber}};
+use crate::parsers::unit_calc_parser::{
+    interpreter::get_function_names,
+    unit_number_parser::{MetricBaseUnit, UnitExp, UnitNumber},
+};
 
 #[derive(Clone, PartialEq)]
 pub enum Token {
@@ -98,48 +101,12 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         (".".to_string(), vec![Token::Dot]),
         (",".to_string(), vec![Token::Comma]),
         (
-            "²".to_string(),
-            vec![Token::Power, Token::Number("2".to_string())],
-        ),
-        (
             "squared".to_string(),
             vec![Token::Power, Token::Number("2".to_string())],
         ),
         (
-            "³".to_string(),
-            vec![Token::Power, Token::Number("3".to_string())],
-        ),
-        (
             "cubed".to_string(),
             vec![Token::Power, Token::Number("3".to_string())],
-        ),
-        (
-            "⁴".to_string(),
-            vec![Token::Power, Token::Number("4".to_string())],
-        ),
-        (
-            "⁵".to_string(),
-            vec![Token::Power, Token::Number("5".to_string())],
-        ),
-        (
-            "⁶".to_string(),
-            vec![Token::Power, Token::Number("6".to_string())],
-        ),
-        (
-            "⁷".to_string(),
-            vec![Token::Power, Token::Number("7".to_string())],
-        ),
-        (
-            "⁸".to_string(),
-            vec![Token::Power, Token::Number("8".to_string())],
-        ),
-        (
-            "⁹".to_string(),
-            vec![Token::Power, Token::Number("9".to_string())],
-        ),
-        (
-            "⁰".to_string(),
-            vec![Token::Power, Token::Number("0".to_string())],
         ),
     ];
     atomic.extend(
@@ -151,7 +118,22 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
     if let Some(t) = atomic.iter().find(|a| a.0 == s) {
         return Some(t.1.iter().cloned().collect());
     }
-    if s.chars().all(|c| c.is_numeric()) {
+    let pows = "⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺⁼⁽⁾ⁱⁿ";
+    let npow = "0123456789-+=()in";
+    if s.chars().all(|c| pows.contains(c)) {
+        return lex(format!("^({})",
+                s.chars()
+                    .map(|c| {
+                        npow.chars()
+                            .nth(pows.chars().enumerate().find(|(_, b)| *b == c).unwrap().0)
+                            .unwrap()
+                    })
+                    .collect::<String>(),
+            ),
+            units
+        );
+    }
+    if s.chars().all(|c| c.is_numeric() && !pows.contains(c)) {
         return Some(vec![Token::Number(s)]);
     }
     if s.chars().all(|c| c.is_whitespace()) {
