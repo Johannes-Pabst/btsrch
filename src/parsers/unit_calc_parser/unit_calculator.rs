@@ -40,6 +40,13 @@ impl UnitNumber {
             Err("only integer exponents without numbers are allowed!".to_string())
         }
     }
+    pub fn to_f64(&self) -> Result<f64, String> {
+        if self.units.len() == 0 {
+            Ok(self.num)
+        } else {
+            Err("no units allowed here!".to_string())
+        }
+    }
     pub fn addable(&self, other: Self) -> bool {
         self.units.len() == other.units.len()
             && self.units.iter().zip(other.units).all(|(a, b)| *a == b)

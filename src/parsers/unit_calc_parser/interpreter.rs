@@ -116,6 +116,9 @@ impl UnitCalculation {
                 let v = a.execute()?;
                 match s.as_str() {
                     "sqrt" => Ok(v.map(&|n| n.pow_one_over_i(2))?),
+                    "sin"=>v.map(&|v|Ok(UnitNumber { num: v.to_f64()?.sin(),units:Vec::new()})),
+                    "cos"=>v.map(&|v|Ok(UnitNumber { num: v.to_f64()?.cos(),units:Vec::new()})),
+                    "tan"=>v.map(&|v|Ok(UnitNumber { num: v.to_f64()?.tan(),units:Vec::new()})),
                     _ => Err(format!("unknown function: {}", s)),
                 }
             }
@@ -131,5 +134,5 @@ impl UnitCalculation {
     }
 }
 pub fn get_function_names() -> Vec<String> {
-    vec!["sqrt".to_string()]
+    vec!["sqrt".to_string(), "sin".to_string(), "cos".to_string(), "tan".to_string()]
 }

@@ -244,7 +244,7 @@ pub fn parse_unit_mult_div_2(tokens: Vec<Token>) -> Result<UnitCalculation, Stri
         };
         if open_brackets == 0 {
             match t {
-                Token::Unit(_, _) => {
+                Token::FunctionName(_) | Token::Unit(_, _) => {
                     if let Some((_, p)) = iterator.peek() {
                         match p {
                             Token::Unit(_, _) | Token::Number(_) | Token::CloseBracket => {
@@ -331,7 +331,7 @@ pub fn parse_unit_number(mut tokens: Vec<Token>) -> Result<UnitCalculation, Stri
                             units: Vec::new(),
                         })
                     }),
-                _ => Err(format!("wrong number format!")),
+                (a, b) => Err(format!("wrong number format: {}", [a, b].iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "))),
             }
         }
         3 => {
@@ -350,7 +350,7 @@ pub fn parse_unit_number(mut tokens: Vec<Token>) -> Result<UnitCalculation, Stri
                             units: Vec::new(),
                         })
                     }),
-                _ => Err(format!("wrong number format!")),
+                (a, b, c) => Err(format!("wrong number format: {}", [a, b, c].iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "))),
             }
         }
         _ => Err(format!("wrong number len: {}", tokens.len())),
