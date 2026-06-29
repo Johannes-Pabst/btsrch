@@ -48,6 +48,16 @@ impl Value {
             }
         }
     }
+    pub fn to_string_5(&self) -> String {
+        match self {
+            Self::Touple(v)=>{
+                format!("({})", v.iter().map(|v| v.to_string_5()).collect::<Vec<_>>().join(", "))
+            }
+            Self::UnitNumber(un)=>{
+                format!("{:.5}", un.num)
+            }
+        }
+    }
 }
 impl ToString for Value{
     fn to_string(&self) -> String {

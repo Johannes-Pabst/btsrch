@@ -72,16 +72,14 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
             let cleaned = unit.si.cleaned();
             if let Some(log) = un.log(&cleaned) {
                 let nun = cleaned.pow_i64(log);
-                let unit_number = remove_trailing_precision_zeroes(format!(
-                    "{:.5}",
+                let unit_number = 
                     UnitCalculation::Div(
                         Box::new(UnitCalculation::Value(un.clone())),
                         Box::new(UnitCalculation::Number(nun.clone()))
                     )
                     .execute()
                     .unwrap()
-                    .to_string()
-                ));
+                    .to_string_5();
                 let mut score = (-(unit_number.len() as f64)
                     - (unit_number.len() as f64
                         - unit_number
@@ -112,7 +110,7 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
         if unum.flatten().iter().any(|x| x.units.len() > 0) {
             return Err("incompatible target unit".to_string());
         }
-        let unit_number = remove_trailing_precision_zeroes(format!("{:.5}", unum.to_string()));
+        let unit_number = unum.to_string_5();
         let mut uname = u.plural;
         if unit_number == "1".to_string() {
             uname = u.name;
@@ -137,16 +135,9 @@ pub fn execute_unit_str(input: String) -> Result<String, String> {
         if unum.flatten().iter().any(|x| x.units.len() > 0) {
             return Err("incompatible target unit".to_string());
         }
-        let unit_number = remove_trailing_precision_zeroes(format!("{:.5}", unum.to_string()));
+        let unit_number = unum.to_string_5();
         Ok(format!("{unit_number} {}", tu.1))
     } else {
         Ok(un.to_string())
-    }
-}
-fn remove_trailing_precision_zeroes(s: String) -> String {
-    if s.contains(".") {
-        s.trim_end_matches('0').trim_end_matches('.').to_string()
-    }else{
-        s
     }
 }
