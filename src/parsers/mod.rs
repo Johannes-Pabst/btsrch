@@ -6,3 +6,4 @@ pub mod unit_calc_parser;
 pub mod unicode_parser;
 pub mod command_parser;
 pub mod cliphist_parser;
+pub mod regex_to_command;

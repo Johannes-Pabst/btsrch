@@ -16,7 +16,9 @@ pub struct LinkParserConfig {
 }
 impl Default for LinkParserConfig {
     fn default() -> Self {
-        Self { base_priority: 101.0 }
+        Self {
+            base_priority: 101.0,
+        }
     }
 }
 impl ConfigDefault for LinkParser {
@@ -34,14 +36,13 @@ impl QueryParser for LinkParser {
             "org", // Organization
             "net", // Network
             "edu", // Education
-            "co",  // Company (used in countries like .co.uk)
             "io",  // Tech startups
             "us",  // United States
             "uk",  // United Kingdom
             "ca",  // Canada
             "de",  // Germany
             "rs",  // docs.rs
-            "tv", "link",
+            "tv", "be", "link",
         ];
         let word = r"([A-Za-z0-9_\-]+)";
         let bword = r"([A-Za-z0-9_\-%\.]+)";

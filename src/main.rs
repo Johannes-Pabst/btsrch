@@ -23,6 +23,7 @@ use crate::parsers::command_parser::CommandParser;
 use crate::parsers::custom_commands_parser::CustomCommandsParser;
 use crate::parsers::link_parser::LinkParser;
 use crate::parsers::path_parser::PathParser;
+use crate::parsers::regex_to_command::RegexToCommandParser;
 use crate::parsers::unicode_parser::UnicodeParser;
 use crate::parsers::unit_calc_parser::main::UnitCalcParser;
 use crate::query_manager::{ChangeInstruction, ListEntry, QueryManager};
@@ -314,6 +315,7 @@ async fn main() {
         mgr.add_query_parser_config::<UnicodeParser>(&mut config);
         mgr.add_query_parser_config::<CommandParser>(&mut config);
         mgr.add_query_parser_config::<ClipboardParser>(&mut config);
+        mgr.add_query_parser_config::<RegexToCommandParser>(&mut config);
         mgr.start().await.unwrap();
     });
     tokio::spawn(async move {
