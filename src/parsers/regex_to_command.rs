@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use async_trait::async_trait;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -30,10 +32,7 @@ pub struct RegexToCommandElementParsed {
 impl Default for RegexToCommandParserConfig {
     fn default() -> Self {
         Self {
-            elements: vec![
-                RegexToCommandElement::default(),
-                RegexToCommandElement::default(),
-            ],
+            elements: Vec::new(),
         }
     }
 }
@@ -122,6 +121,7 @@ impl QueryParser for RegexToCommandParser {
                                 .args(&["-c", &command_clone])
                                 .spawn()
                                 .unwrap();
+                            exit(0);
                         })),
                         priority: e.base_priority,
                     })
