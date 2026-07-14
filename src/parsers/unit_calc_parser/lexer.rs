@@ -121,7 +121,9 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
     let pows = "⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺⁼⁽⁾ⁱⁿ";
     let npow = "0123456789-+=()in";
     if s.chars().all(|c| pows.contains(c)) {
-        return lex(format!("^({})",
+        return lex(
+            format!(
+                "^({})",
                 s.chars()
                     .map(|c| {
                         npow.chars()
@@ -130,7 +132,7 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
                     })
                     .collect::<String>(),
             ),
-            units
+            units,
         );
     }
     if s.chars().all(|c| c.is_numeric() && !pows.contains(c)) {
@@ -1329,6 +1331,176 @@ pub fn get_units() -> Vec<Unit> {
                 ],
             },
             priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.extend(
+        Unit {
+            name: "pascal".to_string(),
+            plural: "pascals".to_string(),
+            abbreviation: "Pa".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: -1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "bar".to_string(),
+            plural: "bar".to_string(),
+            abbreviation: "bar".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 100000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: -1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.push(
+        Unit {
+            name: "atmosphere".to_string(),
+            plural: "atmospheres".to_string(),
+            abbreviation: "atm".to_string(),
+            valid_names: vec!["standard atmosphere".to_string()],
+            si: UnitNumber {
+                num: 101325.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: -1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "technical atmosphere".to_string(),
+            plural: "technical atmospheres".to_string(),
+            abbreviation: "at".to_string(),
+            valid_names: vec!["atmosphere technical".to_string()],
+            si: UnitNumber {
+                num: 98066.5,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: -1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            },
+            priority: -1.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "torr".to_string(),
+            plural: "torr".to_string(),
+            abbreviation: "Torr".to_string(),
+            valid_names: vec!["mmHg".to_string()],
+            si: UnitNumber {
+                num: 133.32236842105263,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: -1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            },
+            priority: -1.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "psi".to_string(),
+            plural: "psi".to_string(),
+            abbreviation: "psi".to_string(),
+            valid_names: vec!["pound per square inch".to_string()],
+            si: UnitNumber {
+                num: 6894.757293168361,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: -1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                ],
+            },
+            priority: -2.0,
         }
         .create(),
     );
