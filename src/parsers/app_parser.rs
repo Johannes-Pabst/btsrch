@@ -219,17 +219,16 @@ impl ConfigDefault for AppParser {
                                     if display && name_comb.is_some() && exec.is_some() {
                                         let icon = icon
                                             .map(|icon| {
-                                                let find_default_icon = icons.find_icon(
+                                                let find_default_icon = Path::new(&icon)
+                                                    .exists()
+                                                    .then(|| Some(icon.clone()))
+                                                    .unwrap_or_else(|| {
+                                                        icons.find_icon(
                                                     icon.as_str(),
                                                     16,
                                                     1,
                                                     "breeze-dark",
-                                                );
-                                                // println!("{icon}: {:?}", find_default_icon);
-                                                find_default_icon
-                                            })
-                                            .flatten()
-                                            .map(|icon_file| {
+                                                ).map(|icon_file| {
                                                 let path = icon_file.path();
                                                 if path.extension().unwrap().to_str().unwrap()
                                                     == "svg"
@@ -310,6 +309,11 @@ impl ConfigDefault for AppParser {
                                                 } else {
                                                     path.to_str().map(|s| s.to_string())
                                                 }
+                                            })
+                                            .flatten()
+                                                    });
+                                                println!("{icon}: {:?}", find_default_icon);
+                                                find_default_icon
                                             })
                                             .flatten();
                                         apps.push(AppInfo {

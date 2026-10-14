@@ -5,3 +5,4 @@ pub mod parser;
 pub mod interpreter;
 pub mod unit_calculator;
 pub mod fraction;
+pub mod rational;
