@@ -26,7 +26,8 @@ impl Value {
         let f = self.flatten();
         f.iter()
             .map(|a| a.log(un))
-            .reduce(|a, b| if a == b { a } else { None }).flatten()
+            .reduce(|a, b| if a == b { a } else { None })
+            .flatten()
     }
     pub fn flatten(&self) -> Vec<UnitNumber> {
         match self {
@@ -34,40 +35,51 @@ impl Value {
             Self::UnitNumber(u) => vec![u.clone()],
         }
     }
-    pub fn map<F>(&self, f:&F)->Result<Self,String> where F: Fn(UnitNumber)->Result<UnitNumber,String>{
+    pub fn map<F>(&self, f: &F) -> Result<Self, String>
+    where
+        F: Fn(UnitNumber) -> Result<UnitNumber, String>,
+    {
         match self {
-            Self::Touple(v)=>{
-                let mut v2=Vec::new();
-                for n in v{
+            Self::Touple(v) => {
+                let mut v2 = Vec::new();
+                for n in v {
                     v2.push(n.map(f)?);
                 }
                 Ok(Self::Touple(v2))
             }
-            Self::UnitNumber(n)=>{
-                Ok(Self::UnitNumber(f(n.clone())?))
-            }
+            Self::UnitNumber(n) => Ok(Self::UnitNumber(f(n.clone())?)),
         }
     }
     pub fn to_string_5(&self) -> String {
         match self {
-            Self::Touple(v)=>{
-                format!("({})", v.iter().map(|v| v.to_string_5()).collect::<Vec<_>>().join(", "))
+            Self::Touple(v) => {
+                format!(
+                    "({})",
+                    v.iter()
+                        .map(|v| v.to_string_5())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
             }
-            Self::UnitNumber(un)=>{
+            Self::UnitNumber(un) => {
                 format!("{:.5}", un.num)
             }
         }
     }
 }
-impl ToString for Value{
+impl ToString for Value {
     fn to_string(&self) -> String {
         match self {
-            Self::Touple(v)=>{
-                format!("({})", v.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", "))
+            Self::Touple(v) => {
+                format!(
+                    "({})",
+                    v.iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
             }
-            Self::UnitNumber(un)=>{
-                un.to_string()
-            }
+            Self::UnitNumber(un) => un.to_string(),
         }
     }
 }
@@ -96,11 +108,14 @@ impl UnitCalculation {
             },
             Self::Pow(a, b) => match (a.execute()?, b.execute()?) {
                 (Value::UnitNumber(a), Value::UnitNumber(b)) => {
-                    if a.units.len()>0{
+                    if a.units.len() > 0 {
                         Ok(Value::UnitNumber(a.pow_i64(b.to_i64()?)))
-                    }else if b.units.len()==0{
-                        Ok(Value::UnitNumber(UnitNumber { num: a.num.powf(b.num), units: Vec::new() }))
-                    }else{
+                    } else if b.units.len() == 0 {
+                        Ok(Value::UnitNumber(UnitNumber {
+                            num: a.num.powf(b.num),
+                            units: Vec::new(),
+                        }))
+                    } else {
                         Err("units in the exponents!".to_string())
                     }
                 }
@@ -116,9 +131,94 @@ impl UnitCalculation {
                 let v = a.execute()?;
                 match s.as_str() {
                     "sqrt" => Ok(v.map(&|n| n.pow_one_over_i(2))?),
-                    "sin"=>v.map(&|v|Ok(UnitNumber { num: v.to_f64()?.sin(),units:Vec::new()})),
-                    "cos"=>v.map(&|v|Ok(UnitNumber { num: v.to_f64()?.cos(),units:Vec::new()})),
-                    "tan"=>v.map(&|v|Ok(UnitNumber { num: v.to_f64()?.tan(),units:Vec::new()})),
+                    "sin" => v.map(&|v| {
+                        Ok(UnitNumber {
+                            num: v.to_f64()?.sin(),
+                            units: Vec::new(),
+                        })
+                    }),
+                    "cos" => v.map(&|v| {
+                        Ok(UnitNumber {
+                            num: v.to_f64()?.cos(),
+                            units: Vec::new(),
+                        })
+                    }),
+                    "tan" => v.map(&|v| {
+                        Ok(UnitNumber {
+                            num: v.to_f64()?.tan(),
+                            units: Vec::new(),
+                        })
+                    }),
+                    "max" => v
+                        .flatten()
+                        .iter()
+                        .map(|x| Ok(x.clone()))
+                        .reduce(|x, y| {
+                            let x = x?;
+                            let y = y?;
+                            x.addable(y.clone())
+                                .then(|| UnitNumber {
+                                    num: x.num.max(y.num),
+                                    units: x.units.clone(),
+                                })
+                                .ok_or(format!(
+                                    "can't get the max of different units: {}, {}",
+                                    x.to_string(),
+                                    y.to_string()
+                                ))
+                        })
+                        .ok_or("empty arguments not allowed here!".to_string())
+                        .flatten()
+                        .map(|x| Value::UnitNumber(x)),
+                    "min" => v
+                        .flatten()
+                        .iter()
+                        .map(|x| Ok(x.clone()))
+                        .reduce(|x, y| {
+                            let x = x?;
+                            let y = y?;
+                            x.addable(y.clone())
+                                .then(|| UnitNumber {
+                                    num: x.num.min(y.num),
+                                    units: x.units.clone(),
+                                })
+                                .ok_or(format!(
+                                    "can't get the min of different units: {}, {}",
+                                    x.to_string(),
+                                    y.to_string()
+                                ))
+                        })
+                        .ok_or("empty arguments not allowed here!".to_string())
+                        .flatten()
+                        .map(|x| Value::UnitNumber(x)),
+                    "sgn" | "sign" => v.map(&|v| {
+                        Ok(UnitNumber {
+                            num: match v.num {
+                                ..0.0 => -1.0,
+                                0.0 => 0.0,
+                                _ => 1.0,
+                            },
+                            units: Vec::new(),
+                        })
+                    }),
+                    "asin" | "sin⁻¹" => v.map(&|v| {
+                        Ok(UnitNumber {
+                            num: v.to_f64()?.asin(),
+                            units: Vec::new(),
+                        })
+                    }),
+                    "acos" | "cos⁻¹" => v.map(&|v| {
+                        Ok(UnitNumber {
+                            num: v.to_f64()?.acos(),
+                            units: Vec::new(),
+                        })
+                    }),
+                    "atan" | "tan⁻¹" => v.map(&|v| {
+                        Ok(UnitNumber {
+                            num: v.to_f64()?.atan(),
+                            units: Vec::new(),
+                        })
+                    }),
                     _ => Err(format!("unknown function: {}", s)),
                 }
             }
@@ -127,12 +227,25 @@ impl UnitCalculation {
                     .map(|a| a.execute())
                     .collect::<Result<Vec<_>, _>>()?,
             )),
-            Self::Value(v)=>{
-                Ok(v.clone())
-            }
+            Self::Value(v) => Ok(v.clone()),
         }
     }
 }
 pub fn get_function_names() -> Vec<String> {
-    vec!["sqrt".to_string(), "sin".to_string(), "cos".to_string(), "tan".to_string()]
+    vec![
+        "sqrt".to_string(),
+        "sin".to_string(),
+        "cos".to_string(),
+        "tan".to_string(),
+        "max".to_string(),
+        "min".to_string(),
+        "sgn".to_string(),
+        "sign".to_string(),
+        "asin".to_string(),
+        "acos".to_string(),
+        "atan".to_string(),
+        "sin⁻¹".to_string(),
+        "cos⁻¹".to_string(),
+        "tan⁻¹".to_string(),
+    ]
 }
